@@ -54,7 +54,7 @@ if "jadwal_gym_admin" not in st.session_state:
         "Hari 3 – Upper Body + Arms": [
             {"nama": "Incline Smith Machine Press", "target": "4 × 10"},
             {"nama": "Chest Supported Row", "target": "4 × 10"},
-            {"nama": "Dumbbell Shoulder Press", "target": "3 × 10"},
+            {"navigate": "Dumbbell Shoulder Press", "target": "3 × 10"},
             {"nama": "Lateral Raise", "target": "4 × 15"},
             {"nama": "Rear Delt Fly", "target": "3 × 15"},
             {"nama": "Cable Fly", "target": "3 × 12"},
