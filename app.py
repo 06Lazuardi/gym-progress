@@ -5,6 +5,7 @@ import os
 import requests
 import base64
 import random
+import time  # Ditambahkan untuk pelacakan durasi login otomatis 12 jam
 from io import StringIO
 
 # --- 1. CONFIG HALAMAN MOBILE ---
@@ -66,7 +67,7 @@ df_logs, file_sha = load_data_from_github()
 # --- 3. DATABASE USER ---
 if "user_database" not in st.session_state:
     st.session_state.user_database = {
-        "06_Lazuardi": {"password": "superpassword2026", "role": "admin", "nama": "Ardi"},
+        "06_Lazuardi": {"password": "superpassword2026", "role": "admin", "nama": "Owner Gym (Ardi)"},
         "Artha": {"password": "Artha123", "role": "member", "nama": "Juniartha"},
         "Rara": {"password": "Rara123", "role": "member", "nama": "Rara"},
         "Yuni": {"password": "Yuni123", "role": "member", "nama": "Yuni"},
@@ -155,12 +156,28 @@ if "jadwal_gym_member_umum" not in st.session_state:
         "Hari 4 – Full Lower Body": [{"nama": "Back Squat", "target": "4 × 8"}, {"nama": "Romanian Deadlift", "target": "4 × 8"}, {"nama": "Leg Press", "target": "3 × 12"}, {"nama": "Bulgarian Split Squat", "target": "3 × 10/kaki"}, {"nama": "Leg Extension", "target": "3 × 15"}, {"nama": "Seated Leg Curl", "target": "3 × 15"}, {"nama": "Hip Thrust", "target": "4 × 10"}, {"nama": "Standing Calf Raise", "target": "4 × 15"}, {"nama": "Seated Calf Raise", "target": "4 × 20"}, {"nama": "Hanging Leg Raise / Cable Crunch", "target": "3 × 15"}]
     }
 
-# --- 6. INITIALIZE STATUS LOGIN ---
+# --- 6. INITIALIZE STATUS LOGIN & FITUR EXPIRATION (12 JAM) ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_id = None
     st.session_state.user_role = None
     st.session_state.user_nama = None
+    st.session_state.login_timestamp = None
+    st.session_state.tetap_login = False
+
+# Sistem Cek Durasi Otomatis (Jika opsi "Tetap Login" dicentang)
+# 12 Jam = 12 * 3600 detik = 43200 detik
+if st.session_state.logged_in and st.session_state.tetap_login:
+    waktu_sekarang = time.time()
+    durasi_aktif = waktu_sekarang - st.session_state.login_timestamp
+    if durasi_aktif > 43200:  
+        st.session_state.logged_in = False
+        st.session_state.user_id = None
+        st.session_state.user_role = None
+        st.session_state.user_nama = None
+        st.session_state.login_timestamp = None
+        st.session_state.tetap_login = False
+        st.warning("⚠️ Sesi login 12 jam Anda telah berakhir. Silakan masuk kembali.")
 
 # --- 7. INTERFACE SEBELUM LOGIN & LAMAN RESET PASSWORD ---
 if not st.session_state.logged_in:
@@ -170,6 +187,9 @@ if not st.session_state.logged_in:
     if st.session_state.halaman_akses == "login":
         username_input = st.text_input("Username").strip()
         password_input = st.text_input("Password", type="password").strip()
+        
+        # Penambahan opsi "Tetap login di perangkat ini"
+        tetap_login_checkbox = st.checkbox("Tetap login di perangkat ini (Maks. 12 Jam)")
         
         # Penataan Tombol Masuk & Tombol Lupa Password Berdampingan
         col_btn1, col_btn2 = st.columns([1, 4])
@@ -186,6 +206,8 @@ if not st.session_state.logged_in:
                     st.session_state.user_id = username_input
                     st.session_state.user_role = db[username_input]["role"]
                     st.session_state.user_nama = db[username_input]["nama"]
+                    st.session_state.login_timestamp = time.time()  # Simpan waktu masuk
+                    st.session_state.tetap_login = tetap_login_checkbox # Simpan preferensi pengguna
                     st.rerun()
                 else: 
                     st.error("❌ Password salah.")
@@ -250,6 +272,14 @@ else:
     st.title("🏋️‍♂️ Universal Gym Tracker Portal")
     st.markdown(f"### 🎉 Halo **{st.session_state.user_nama}**")
     st.markdown("##### *Semangat Latihan ya hari ini!* 🔥")
+    
+    # Tampilkan info durasi sisa waktu jika opsi "tetap login" aktif
+    if st.session_state.tetap_login:
+        sisa_waktu_detik = 43200 - (time.time() - st.session_state.login_timestamp)
+        sisa_jam = int(sisa_waktu_detik // 3600)
+        sisa_menit = int((sisa_waktu_detik % 3600) // 60)
+        st.caption(f"⏳ Sesi simpan login aktif. Anda akan log out otomatis dalam: `{sisa_jam} jam {sisa_menit} menit`.")
+        
     st.write("---")
 
     # === PANEL SIDEBAR KIRI ===
@@ -299,6 +329,8 @@ else:
         st.session_state.user_id = None
         st.session_state.user_role = None
         st.session_state.user_nama = None
+        st.session_state.login_timestamp = None
+        st.session_state.tetap_login = False
         st.rerun()
 
     tab_input, tab_progress = st.tabs(["🏋️ Latihan Hari Ini", "📊 Progress Latihan"])
