@@ -166,15 +166,14 @@ if "logged_in" not in st.session_state:
 
 # Proteksi Otomatis: 12 Jam = 12 * 3600 detik = 43200 detik
 if st.session_state.logged_in:
-    waktu_sekarang = time.time()
-    durasi_aktif = waktu_sekarang - st.session_state.login_timestamp
+    waktu_sekarang = time.time
     if durasi_aktif > 43200:  
         st.session_state.logged_in = False
         st.session_state.user_id = None
         st.session_state.user_role = None
         st.session_state.user_nama = None
         st.session_state.login_timestamp = None
-        st.warning("⚠️ Sesi login 12 jam Anda telah berakhir demi keamanan. Silakan masuk kembali.")
+        st.warning("⚠️ Sesi login Anda telah berakhir. Silakan masuk kembali.")
 
 # --- 7. INTERFACE SEBELUM LOGIN & LAMAN RESET PASSWORD ---
 if not st.session_state.logged_in:
