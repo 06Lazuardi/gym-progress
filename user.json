@@ -1,1 +1,42 @@
-
+{
+    "06_Lazuardi": {
+        "password": "superpassword2026",
+        "role": "admin",
+        "nama": "Ardi"
+    },
+    "Artha": {
+        "password": "Artha123",
+        "role": "member",
+        "nama": "Juniartha"
+    },
+    "Rara": {
+        "password": "Rara123",
+        "role": "member",
+        "nama": "Rara"
+    },
+    "Yuni": {
+        "password": "Yuni123",
+        "role": "member",
+        "nama": "Yuni"
+    },
+    "Meli": {
+        "password": "Meli123",
+        "role": "member",
+        "nama": "Meli"
+    },
+    "Yana": {
+        "password": "Yana123",
+        "role": "member",
+        "nama": "Yana"
+    },
+    "Ayu": {
+        "password": "Ayu123",
+        "role": "member",
+        "nama": "Ayu"
+    },
+    "Sefitri": {
+        "password": "Cepi123",
+        "role": "member",
+        "nama": "Sefitri"
+    }
+}
