@@ -5,7 +5,8 @@ import os
 import requests
 import base64
 import random
-import time  # Melacak durasi login otomatis 12 jam di latar belakang
+import time
+import json
 from io import StringIO
 
 # --- 1. CONFIG HALAMAN MOBILE ---
@@ -15,6 +16,7 @@ st.set_page_config(page_title="Gym Member Portal", page_icon="🔒", layout="cen
 GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = st.secrets["REPO_NAME"] 
 LOG_FILE = "gym_workout_logs.csv"
+USER_FILE = "users.json" # [TAMBAHAN: File untuk simpan user]
 KOLOM_DATABASE = ["Tanggal", "Username", "Gerakan", "Set_Ke", "Beban_kg", "Reps"]
 MASTER_PASSWORD = st.secrets.get("MASTER_PASSWORD", "superowner2026")
 
@@ -62,7 +64,7 @@ df_logs, sha_logs, user_db_github, sha_users = load_data_from_github()
 
 # --- 3. DATABASE USER ---
 if "user_database" not in st.session_state:
-    st.session_state.user_database = {
+    st.session_state.user_database = user_db_github if user_db_github else {
         "06_Lazuardi": {"password": "superpassword2026", "role": "admin", "nama": "Ardi"},
         "Artha": {"password": "Artha123", "role": "member", "nama": "Juniartha"},
         "Rara": {"password": "Rara123", "role": "member", "nama": "Rara"},
@@ -177,7 +179,7 @@ if st.session_state.logged_in:
 
 # --- 7. INTERFACE SEBELUM LOGIN & LAMAN RESET PASSWORD ---
 if not st.session_state.logged_in:
-    st.title("🏋️‍♂️ Private Coaching Gym")
+    st.title("🏋️‍♂️ Aplikasi Gymnya Anak SC")
     
     # KONDISI 1: HALAMAN LOGIN UTAMA
     if st.session_state.halaman_akses == "login":
@@ -239,6 +241,7 @@ if not st.session_state.logged_in:
             req_data = st.session_state.reset_requests[username_reset]
             if req_data["approved"]:
                 st.session_state.user_database[username_reset]["password"] = req_data["new_password"]
+                sync_users() # <-- [TAMBAHAN] Simpan perubahan ke GitHub
                 del st.session_state.reset_requests[username_reset] 
                 st.success("🎉 Otorisasi Admin Berhasil! Password Anda telah diperbarui.")
                 st.session_state.halaman_akses = "login"
@@ -256,11 +259,9 @@ if not st.session_state.logged_in:
 
 # --- 8. INTERFACE SETELAH LOGIN ---
 else:
-    st.title("🏋️‍♂️ Private Coaching Portal")
+    st.title("🏋️‍♂️ Aplikasi Gymnya Anak SC")
     st.markdown(f"### 🎉 Halo **{st.session_state.user_nama}**")
     st.markdown("##### *Semangat Latihan ya hari ini!* 🔥")
-    
-    # [Perubahan]: Teks keterangan sisa waktu masa sesi aktif di sini telah dihapus sesuai request
         
     st.write("---")
 
@@ -298,6 +299,7 @@ else:
                 real_pass = st.session_state.user_database[st.session_state.user_id]["password"]
                 if pass_lama == real_pass:
                     st.session_state.user_database[st.session_state.user_id]["password"] = pass_baru_self
+                    sync_users() # <-- [TAMBAHAN] Simpan perubahan ke GitHub
                     st.success("✅ Password berhasil diubah!")
                 else:
                     st.error("❌ Password lama salah.")
@@ -364,8 +366,8 @@ else:
                 label_checkbox = "🔄 Gunakan Rekomendasi Gerakan Alternatif"
                 if ada_variasi_minggu_lalu: 
                     label_checkbox += " *(Otomatis aktif dari minggu lalu)*"
-                gunakan_variasi = st.checkbox(label_checkbox, value=ada_variasi_minggu_lalu)
-                if gunakan_variasi:
+                gunain_variasi = st.checkbox(label_checkbox, value=ada_variasi_minggu_lalu)
+                if gunain_variasi:
                     var_default = variasi_minggu_lalu.get(gerakan_utama_dipilih, opsi_rekomendasi_sistem[0])
                     idx_default = opsi_rekomendasi_sistem.index(var_default) if var_default in opsi_rekomendasi_sistem else 0
                     gerakan_pilihan_final = st.selectbox("Rekomendasi Alternatif (Target Otot Sama):", opsi_rekomendasi_sistem, index=idx_default)
@@ -401,7 +403,7 @@ else:
                     else:
                         new_log = pd.DataFrame([{"Tanggal": pd.to_datetime(datetime.date.today()), "Username": st.session_state.user_id, "Gerakan": gerakan_pilihan_final, "Set_Ke": int(set_berikutnya), "Beban_kg": float(berat), "Reps": int(reps)}])
                         df_updated = pd.concat([df_logs, new_log], ignore_index=True)
-                        if save_data_to_github(df_updated, file_sha):
+                        if save_to_github(LOG_FILE, df_updated.to_csv(index=False), sha=file_sha, message="Update workout logs"):
                             st.success(f"Set {set_berikutnya} disimpan!")
                             st.cache_data.clear()
                             st.rerun()
@@ -469,12 +471,10 @@ else:
             elif mode_view == "Grafik Tren Beban (Overload)":
                 st.markdown("### 📈 Grafik Kenaikan Beban (*Progressive Overload*)")
                 daftar_gerakan_user = df_user_all["Gerakan"].unique()
-                gerakan_dipilih = st.selectbox("Pilih Gerakan yang Ingin Dilihat Trennya:", daftar_gerakan_user)
-                df_tren = df_user_all[df_user_all["Gerakan"] == gerakan_dipilih]
-                df_chart = df_tren.groupby("Tanggal_Saja")["Beban_kg"].max().reset_index()
-                df_chart.columns = ["Tanggal", "Beban Maksimal (kg)"]
-                st.line_chart(df_chart.set_index("Tanggal"), y="Beban Maksimal (kg)")
+                gerakan_chart = st.selectbox("Pilih Gerakan untuk Tren:", daftar_gerakan_user)
+                df_chart = df_user_all[df_user_all["Gerakan"] == gerakan_chart].sort_values("Tanggal")
+                st.line_chart(df_chart.set_index("Tanggal")["Beban_kg"])
                 
             elif mode_view == "Tabel Semua Data Mentah":
-                st.markdown("### 📋 Log Seluruh Aktivitas Latihan")
-                st.dataframe(df_user_all[["Tanggal_Saja", "Gerakan", "Set_Ke", "Beban_kg", "Reps"]].sort_values("Tanggal_Saja", ascending=False).reset_index(drop=True), use_container_width=True)
+                st.markdown("### 📋 Semua Riwayat")
+                st.dataframe(df_user_all[["Tanggal", "Gerakan", "Set_Ke", "Beban_kg", "Reps"]].sort_values(by="Tanggal", ascending=False), use_container_width=True)
