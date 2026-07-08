@@ -166,7 +166,8 @@ if "logged_in" not in st.session_state:
 
 # Proteksi Otomatis: 12 Jam = 12 * 3600 detik = 43200 detik
 if st.session_state.logged_in:
-    waktu_sekarang = time.time
+    waktu_sekarang = time.time()
+    durasi_aktif = waktu_sekarang - st.session_state.login_timestamp
     if durasi_aktif > 43200:  
         st.session_state.logged_in = False
         st.session_state.user_id = None
