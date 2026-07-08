@@ -24,45 +24,41 @@ HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.
 @st.cache_data(ttl=5)
 def load_data_from_github():
     try:
-        response = requests.get(GITHUB_API_URL, headers=HEADERS)
-        if response.status_code == 200:
-            file_json = response.json()
+        # Load Logs
+        resp_logs = requests.get(f"https://api.github.com/repos/{REPO_NAME}/contents/{LOG_FILE}", headers=HEADERS)
+        df = pd.DataFrame(columns=KOLOM_DATABASE)
+        sha_logs = None
+        if resp_logs.status_code == 200:
+            file_json = resp_logs.json()
+            sha_logs = file_json["sha"]
             content = base64.b64decode(file_json["content"]).decode("utf-8")
-            
-            if not content.strip():
-                return pd.DataFrame(columns=KOLOM_DATABASE), file_json["sha"]
-            
-            df = pd.read_csv(StringIO(content))
-            if "Tanggal" in df.columns:
+            if content.strip():
+                df = pd.read_csv(StringIO(content))
                 df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors='coerce')
-            return df, file_json["sha"]
-        else:
-            df_empty = pd.DataFrame(columns=KOLOM_DATABASE)
-            return df_empty, None
-    except Exception as e:
-        st.error(f"Error membaca repositori GitHub: {e}")
-        return pd.DataFrame(columns=KOLOM_DATABASE), None
-
-def save_data_to_github(df, sha=None):
-    df_save = df.copy()
-    if "Tanggal" in df_save.columns:
-        df_save["Tanggal"] = df_save["Tanggal"].astype(str)
         
-    csv_buffer = df_save.to_csv(index=False)
-    content_b64 = base64.b64encode(csv_buffer.encode("utf-8")).decode("utf-8")
-    
-    payload = {
-        "message": f"Update gym logs - {datetime.date.today()}",
-        "content": content_b64
-    }
-    if sha:
-        payload["sha"] = sha
+        # Load Users
+        resp_users = requests.get(f"https://api.github.com/repos/{REPO_NAME}/contents/{USER_FILE}", headers=HEADERS)
+        users = None
+        sha_users = None
+        if resp_users.status_code == 200:
+            file_json = resp_users.json()
+            sha_users = file_json["sha"]
+            users = json.loads(base64.b64decode(file_json["content"]).decode("utf-8"))
+            
+        return df, sha_logs, users, sha_users
+    except Exception as e:
+        return pd.DataFrame(columns=KOLOM_DATABASE), None, None, None
 
-    response = requests.put(GITHUB_API_URL, headers=HEADERS, json=payload)
+def save_to_github(file_path, content_str, sha=None, message="Update data"):
+    content_b64 = base64.b64encode(content_str.encode("utf-8")).decode("utf-8")
+    payload = {"message": message, "content": content_b64}
+    if sha: payload["sha"] = sha
+    url = f"https://api.github.com/repos/{REPO_NAME}/contents/{file_path}"
+    response = requests.put(url, headers=HEADERS, json=payload)
     return response.status_code in [200, 201]
 
-# Tarik data dari GitHub sejak awal aplikasi dimuat
-df_logs, file_sha = load_data_from_github()
+# Tarik data awal
+df_logs, sha_logs, user_db_github, sha_users = load_data_from_github()
 
 # --- 3. DATABASE USER ---
 if "user_database" not in st.session_state:
@@ -76,6 +72,9 @@ if "user_database" not in st.session_state:
         "Ayu": {"password": "Ayu123", "role": "member", "nama": "Ayu"},
         "Sefitri": {"password": "Cepi123", "role": "member", "nama": "Sefitri"}
     }
+def sync_users():
+    content = json.dumps(st.session_state.user_database, indent=4)
+    save_to_github(USER_FILE, content, sha=sha_users, message="Update User Credentials")
 
 # Tempat penyimpanan alur pengajuan reset password
 if "reset_requests" not in st.session_state:
