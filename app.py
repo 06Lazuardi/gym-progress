@@ -5,7 +5,7 @@ import os
 import requests
 import base64
 import random
-import time  # Ditambahkan untuk pelacakan durasi login otomatis 12 jam
+import time  # Melacak durasi login otomatis 12 jam di latar belakang
 from io import StringIO
 
 # --- 1. CONFIG HALAMAN MOBILE ---
@@ -135,7 +135,7 @@ if "jadwal_gym_admin" not in st.session_state:
     st.session_state.jadwal_gym_admin = {
         "Hari 1 – Chest + Triceps": [{"nama": "Barbell Bench Press", "target": "4 × 8"}, {"nama": "Incline Dumbbell Press", "target": "4 × 10"}, {"nama": "Chest Press Machine", "target": "3 × 12"}, {"nama": "Cable Fly", "target": "3 × 12"}, {"nama": "Pec Deck Fly", "target": "3 × 15"}, {"nama": "Rope Pushdown", "target": "3 × 15"}, {"nama": "Overhead Cable Triceps Extension", "target": "3 × 12"}, {"nama": "Dips / Assisted Dips", "target": "3 × Max"}],
         "Hari 2 – Back + Biceps": [{"nama": "Pull Up / Lat Pulldown", "target": "4 × 10"}, {"nama": "Barbell Row", "target": "4 × 8"}, {"nama": "Seated Cable Row", "target": "3 × 10"}, {"nama": "Single Arm Dumbbell Row", "target": "3 × 10"}, {"nama": "Face Pull", "target": "3 × 15"}, {"nama": "EZ Bar Curl", "target": "3 × 10"}, {"nama": "Incline Dumbbell Curl", "target": "3 × 12"}, {"nama": "Hammer Curl", "target": "3 × 12"}],
-        "Hari 3 – Upper Body + Arms": [{"nama": "Incline Smith Machine Press", "target": "4 × 10"}, {"nama": "Chest Supported Row", "target": "4 × 10"}, {"nama": "Dumbbell Shoulder Press", "target": "3 × 10"}, {"nama": "Lateral Raise", "target": "4 × 15"}, {"nama": "Rear Delt Fly", "target": "3 × 15"}, {"nama": "Cable Fly", "target": "3 × 12"}, {"nama": "Close Grip Bench Press", "target": "4 × 10"}, {"nama": "Preacher Curl", "target": "3 × 10"}, {"nama": "Rope Pushdown", "target": "3 × 15"}, {"nama": "Cable Curl", "target": "3 × 12"}],
+        "Hari 3 – Upper Body + Arms": [{"nama": "Incline Smith Machine Press", "target": "4 × 10"}, {"nama": "Chest Supported Row", "target": "4 × 10"}, {"nama": "Dumbbell Shoulder Press", "target": "3 × 10"}, {"nama": "Lateral Raise", "target": "4 × 15"}, {"nama": "Rear Delt Fly", "target": "3 × 15"}, {"nama": "Cable Fly", "target": "3 × 12"}, {"nama": "Close Grip Bench Press", "target": "4 × 10"}, {"literal": "Preacher Curl", "target": "3 × 10"}, {"nama": "Rope Pushdown", "target": "3 × 15"}, {"nama": "Cable Curl", "target": "3 × 12"}],
         "Hari 4 – Full Lower Body": [{"nama": "Back Squat", "target": "4 × 8"}, {"nama": "Romanian Deadlift", "target": "4 × 8"}, {"nama": "Leg Press", "target": "3 × 12"}, {"nama": "Walking Lunges", "target": "3 × 12/kaki"}, {"nama": "Leg Extension", "target": "3 × 15"}, {"nama": "Seated Leg Curl", "target": "3 × 15"}, {"nama": "Hip Thrust", "target": "4 × 10"}, {"nama": "Standing Calf Raise", "target": "4 × 15"}, {"nama": "Seated Calf Raise", "target": "4 × 20"}, {"nama": "Hanging Leg Raise / Cable Crunch", "target": "3 × 15"}]
     }
 
@@ -156,18 +156,16 @@ if "jadwal_gym_member_umum" not in st.session_state:
         "Hari 4 – Full Lower Body": [{"nama": "Back Squat", "target": "4 × 8"}, {"nama": "Romanian Deadlift", "target": "4 × 8"}, {"nama": "Leg Press", "target": "3 × 12"}, {"nama": "Bulgarian Split Squat", "target": "3 × 10/kaki"}, {"nama": "Leg Extension", "target": "3 × 15"}, {"nama": "Seated Leg Curl", "target": "3 × 15"}, {"nama": "Hip Thrust", "target": "4 × 10"}, {"nama": "Standing Calf Raise", "target": "4 × 15"}, {"nama": "Seated Calf Raise", "target": "4 × 20"}, {"nama": "Hanging Leg Raise / Cable Crunch", "target": "3 × 15"}]
     }
 
-# --- 6. INITIALIZE STATUS LOGIN & FITUR EXPIRATION (12 JAM) ---
+# --- 6. INITIALIZE STATUS LOGIN & FITUR EXPIRATION (OTOMATIS 12 JAM) ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_id = None
     st.session_state.user_role = None
     st.session_state.user_nama = None
     st.session_state.login_timestamp = None
-    st.session_state.tetap_login = False
 
-# Sistem Cek Durasi Otomatis (Jika opsi "Tetap Login" dicentang)
-# 12 Jam = 12 * 3600 detik = 43200 detik
-if st.session_state.logged_in and st.session_state.tetap_login:
+# Proteksi Otomatis: 12 Jam = 12 * 3600 detik = 43200 detik
+if st.session_state.logged_in:
     waktu_sekarang = time.time()
     durasi_aktif = waktu_sekarang - st.session_state.login_timestamp
     if durasi_aktif > 43200:  
@@ -176,8 +174,7 @@ if st.session_state.logged_in and st.session_state.tetap_login:
         st.session_state.user_role = None
         st.session_state.user_nama = None
         st.session_state.login_timestamp = None
-        st.session_state.tetap_login = False
-        st.warning("⚠️ Sesi login 12 jam Anda telah berakhir. Silakan masuk kembali.")
+        st.warning("⚠️ Sesi login 12 jam Anda telah berakhir demi keamanan. Silakan masuk kembali.")
 
 # --- 7. INTERFACE SEBELUM LOGIN & LAMAN RESET PASSWORD ---
 if not st.session_state.logged_in:
@@ -188,8 +185,7 @@ if not st.session_state.logged_in:
         username_input = st.text_input("Username").strip()
         password_input = st.text_input("Password", type="password").strip()
         
-        # Penambahan opsi "Tetap login di perangkat ini"
-        tetap_login_checkbox = st.checkbox("Tetap login di perangkat ini")
+        # [Perubahan]: Opsi checkbox "Tetap login" sudah dihapus dari UI sesuai request
         
         # Penataan Tombol Masuk & Tombol Lupa Password Berdampingan
         col_btn1, col_btn2 = st.columns([1, 4])
@@ -206,8 +202,7 @@ if not st.session_state.logged_in:
                     st.session_state.user_id = username_input
                     st.session_state.user_role = db[username_input]["role"]
                     st.session_state.user_nama = db[username_input]["nama"]
-                    st.session_state.login_timestamp = time.time()  # Simpan waktu masuk
-                    st.session_state.tetap_login = tetap_login_checkbox # Simpan preferensi pengguna
+                    st.session_state.login_timestamp = time.time()  # Waktu mulai login dicatat otomatis
                     st.rerun()
                 else: 
                     st.error("❌ Password salah.")
@@ -231,7 +226,6 @@ if not st.session_state.logged_in:
                 if password_baru.strip() == "":
                     st.error("❌ Password baru tidak boleh kosong.")
                 else:
-                    # Buat kode acak 6 digit dan amankan data password baru sementara
                     kode_acak = str(random.randint(100000, 999999))
                     st.session_state.reset_requests[username_reset] = {
                         "code": kode_acak,
@@ -244,16 +238,12 @@ if not st.session_state.logged_in:
                 
         st.write("---")
         
-        # Mengecek status otorisasi real-time
         if username_reset in st.session_state.reset_requests:
             req_data = st.session_state.reset_requests[username_reset]
             if req_data["approved"]:
-                # Eksekusi pembaruan database jika admin telah menyetujui
                 st.session_state.user_database[username_reset]["password"] = req_data["new_password"]
-                del st.session_state.reset_requests[username_reset] # bersihkan antrean
+                del st.session_state.reset_requests[username_reset] 
                 st.success("🎉 Otorisasi Admin Berhasil! Password Anda telah diperbarui.")
-                
-                # Alihkan kembali ke laman login utama secara otomatis
                 st.session_state.halaman_akses = "login"
                 st.info("Kembali ke halaman login...")
                 st.button("Klik untuk Masuk Kembali")
@@ -273,12 +263,11 @@ else:
     st.markdown(f"### 🎉 Halo **{st.session_state.user_nama}**")
     st.markdown("##### *Semangat Latihan ya hari ini!* 🔥")
     
-    # Tampilkan info durasi sisa waktu jika opsi "tetap login" aktif
-    if st.session_state.tetap_login:
-        sisa_waktu_detik = 43200 - (time.time() - st.session_state.login_timestamp)
-        sisa_jam = int(sisa_waktu_detik // 3600)
-        sisa_menit = int((sisa_waktu_detik % 3600) // 60)
-        st.caption(f"⏳ Sesi simpan login aktif. Anda akan log out otomatis dalam: `{sisa_jam} jam {sisa_menit} menit`.")
+    # Mengalkulasi sisa waktu login 12 jam di background secara real-time
+    sisa_waktu_detik = 43200 - (time.time() - st.session_state.login_timestamp)
+    sisa_jam = int(sisa_waktu_detik // 3600)
+    sisa_menit = int((sisa_waktu_detik % 3600) // 60)
+    st.caption(f"⏳ Masa sesi aktif perangkat ini tersisa: `{sisa_jam} jam {sisa_menit} menit`.")
         
     st.write("---")
 
@@ -286,7 +275,6 @@ else:
     st.sidebar.markdown(f"👤 **Pengguna:** {st.session_state.user_nama}")
     st.sidebar.markdown(f"🔰 **Akses:** `{st.session_state.user_role.upper()}`")
     
-    # KONDISI KHUSUS ADMIN: MELIHAT DAFTAR SELURUH MEMBER BESERTA PASSWORD MEREKA
     if st.session_state.user_role == "admin":
         st.sidebar.write("---")
         st.sidebar.markdown("👥 **Daftar Seluruh Member & Password:**")
@@ -294,7 +282,6 @@ else:
             role_badge = "👑 Admin" if detail["role"] == "admin" else "🏃 Member"
             st.sidebar.text(f"• {detail['nama']} ({usr_id})\n  🔑 Pass: {detail['password']}\n  [{role_badge}]")
             
-        # OTORISASI PERMINTAAN RESET PASSWORD YANG DIAJUKAN MEMBER
         if st.session_state.reset_requests:
             st.sidebar.write("---")
             st.sidebar.warning("🚨 **Otorisasi Reset Password:**")
@@ -307,7 +294,6 @@ else:
                         st.sidebar.success(f"Akses diberikan untuk {u_target}!")
                         st.rerun()
 
-    # MENU GANTI PASSWORD MANDIRI UNTUK SEMUA USER (MEMBER & ADMIN)
     st.sidebar.write("---")
     with st.sidebar.expander("🔐 Ganti Password Mandiri"):
         with st.form("change_password_form"):
@@ -330,7 +316,6 @@ else:
         st.session_state.user_role = None
         st.session_state.user_nama = None
         st.session_state.login_timestamp = None
-        st.session_state.tetap_login = False
         st.rerun()
 
     tab_input, tab_progress = st.tabs(["🏋️ Latihan Hari Ini", "📊 Progress Latihan"])
