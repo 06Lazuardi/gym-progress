@@ -187,8 +187,10 @@ if not st.session_state.logged_in:
                     st.session_state.user_role = db[username_input]["role"]
                     st.session_state.user_nama = db[username_input]["nama"]
                     st.rerun()
-                else: st.error("❌ Password salah.")
-            else: st.error("❌ Username tidak terdaftar.")
+                else: 
+                    st.error("❌ Password salah.")
+            else: 
+                st.error("❌ Username tidak terdaftar.")
             
         if go_to_reset:
             st.session_state.halaman_akses = "reset_page"
@@ -312,7 +314,8 @@ else:
             hari_rara = "Hari 2 – Back + Biceps"; hari_admin = "Hari 2 – Back + Biceps"; hari_member_umum = "Hari 1 – Back + Biceps"
         elif nama_hari_indonesia == "Rabu":
             hari_rara = "Hari 3 – Leg"; hari_admin = "REST"; hari_member_umum = "Hari 2 – Chest + Triceps"
-            if st.session_state.user_role == "admin": is_rest_day = True
+            if st.session_state.user_role == "admin": 
+                is_rest_day = True
         else:
             hari_rara = "Hari 1 – Chest + Leg + Triceps"; hari_admin = "Hari 1 – Chest + Triceps"; hari_member_umum = "Hari 2 – Chest + Triceps"
 
@@ -337,7 +340,8 @@ else:
                 df_minggu_lalu = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date >= tgl_7_hari_lalu) & (df_logs["Tanggal"].dt.date < datetime.date.today())]
                 if not df_minggu_lalu.empty:
                     for g in df_minggu_lalu["Gerakan"].unique():
-                        if g in KAMUS_INDUK: variasi_minggu_lalu[KAMUS_INDUK[g]] = g
+                        if g in KAMUS_INDUK: 
+                            variasi_minggu_lalu[KAMUS_INDUK[g]] = g
 
             gerakan_utama_dipilih = st.selectbox("Pilih Slot Gerakan Utama:", daftar_gerakan_default)
             target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_utama_dipilih)
@@ -348,7 +352,8 @@ else:
             
             if opsi_rekomendasi_sistem:
                 label_checkbox = "🔄 Gunakan Rekomendasi Gerakan Alternatif"
-                if ada_variasi_minggu_lalu: label_checkbox += " *(Otomatis aktif dari minggu lalu)*"
+                if ada_variasi_minggu_lalu: 
+                    label_checkbox += " *(Otomatis aktif dari minggu lalu)*"
                 gunakan_variasi = st.checkbox(label_checkbox, value=ada_variasi_minggu_lalu)
                 if gunakan_variasi:
                     var_default = variasi_minggu_lalu.get(gerakan_utama_dipilih, opsi_rekomendasi_sistem[0])
@@ -387,8 +392,11 @@ else:
                         new_log = pd.DataFrame([{"Tanggal": pd.to_datetime(datetime.date.today()), "Username": st.session_state.user_id, "Gerakan": gerakan_pilihan_final, "Set_Ke": int(set_berikutnya), "Beban_kg": float(berat), "Reps": int(reps)}])
                         df_updated = pd.concat([df_logs, new_log], ignore_index=True)
                         if save_data_to_github(df_updated, file_sha):
-                            st.success(f"Set {set_berikutnya} disimpan!"); st.cache_data.clear(); st.rerun()
-                        else: st.error("Gagal menyimpan ke database cloud.")
+                            st.success(f"Set {set_berikutnya} disimpan!")
+                            st.cache_data.clear()
+                            st.rerun()
+                        else: 
+                            st.error("Gagal menyimpan ke database cloud.")
 
         st.write("---")
         st.subheader("📋 Catatan Latihan Anda Hari Ini")
@@ -397,7 +405,8 @@ else:
             df_hari_ini = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date == datetime.date.today())]
         if not df_hari_ini.empty:
             st.dataframe(df_hari_ini[["Gerakan", "Set_Ke", "Beban_kg", "Reps"]].reset_index(drop=True), use_container_width=True)
-        else: st.caption("Belum ada set yang disimpan hari ini.")
+        else: 
+            st.caption("Belum ada set yang disimpan hari ini.")
 
     # ==================== TAB 2: PROGRESS LATIHAN ====================
     with tab_progress:
