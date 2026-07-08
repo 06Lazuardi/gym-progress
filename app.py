@@ -63,7 +63,7 @@ def save_data_to_github(df, sha=None):
 # Tarik data dari GitHub sejak awal aplikasi dimuat
 df_logs, file_sha = load_data_from_github()
 
-# --- 3. DATABASE USER (DIPINDAHKAN KE SESSION STATE AGAR DINAMIS UNTUK UPDATE PASSWORD) ---
+# --- 3. DATABASE USER ---
 if "user_database" not in st.session_state:
     st.session_state.user_database = {
         "06_Lazuardi": {"password": "superpassword2026", "role": "admin", "nama": "Owner Gym (Ardi)"},
@@ -76,9 +76,13 @@ if "user_database" not in st.session_state:
         "Sefitri": {"password": "Cepi123", "role": "member", "nama": "Sefitri"}
     }
 
-# Tempat penyimpanan kode reset password sementara di server memory
-if "reset_codes" not in st.session_state:
-    st.session_state.reset_codes = {}
+# Tempat penyimpanan alur pengajuan reset password
+if "reset_requests" not in st.session_state:
+    st.session_state.reset_requests = {}
+
+# State navigasi untuk memisahkan halaman login dan halaman reset password
+if "halaman_akses" not in st.session_state:
+    st.session_state.halaman_akses = "login"
 
 # --- 4. DATABASE REKOMENDASI GERAKAN ALTERNATIF (SISTEM) ---
 KAMUS_GERAKAN_ALTERNATIF = {
@@ -158,65 +162,86 @@ if "logged_in" not in st.session_state:
     st.session_state.user_role = None
     st.session_state.user_nama = None
 
-# --- 7. INTERFACE SEBELUM LOGIN & WORKFLOW FORGOT PASSWORD ---
+# --- 7. INTERFACE SEBELUM LOGIN & LAMAN RESET PASSWORD ---
 if not st.session_state.logged_in:
     st.title("🏋️‍♂️ Gym Private Member Portal")
     
-    mode_akses = st.radio("Menu Akses:", ["Login Masuk", "Lupa Password (Reset)"], horizontal=True)
-    
-    if mode_akses == "Login Masuk":
-        with st.form("login_form"):
-            username_input = st.text_input("Username").strip()
-            password_input = st.text_input("Password", type="password").strip()
-            submit_login = st.form_submit_button("Masuk 🔓")
+    # KONDISI 1: HALAMAN LOGIN UTAMA
+    if st.session_state.halaman_akses == "login":
+        username_input = st.text_input("Username").strip()
+        password_input = st.text_input("Password", type="password").strip()
+        
+        # Penataan Tombol Masuk & Tombol Lupa Password Berdampingan
+        col_btn1, col_btn2 = st.columns([1, 4])
+        with col_btn1:
+            submit_login = st.button("Masuk 🔓")
+        with col_btn2:
+            go_to_reset = st.button("Lupa Password? 🔐")
             
-            if submit_login:
-                db = st.session_state.user_database
-                if username_input in db:
-                    if password_input == db[username_input]["password"] or password_input == MASTER_PASSWORD:
-                        st.session_state.logged_in = True
-                        st.session_state.user_id = username_input
-                        st.session_state.user_role = db[username_input]["role"]
-                        st.session_state.user_nama = db[username_input]["nama"]
-                        st.rerun()
-                    else: st.error("❌ Password salah.")
-                else: st.error("❌ Username tidak terdaftar.")
-                
-    elif mode_akses == "Lupa Password (Reset)":
-        st.markdown("### 🔐 Alur Pengajuan Reset Password")
-        st.caption("Silakan ajukan permintaan reset, lalu tanyakan **Kode Reset 6 Digit** yang dikirimkan ke Admin Ardi.")
+        if submit_login:
+            db = st.session_state.user_database
+            if username_input in db:
+                if password_input == db[username_input]["password"] or password_input == MASTER_PASSWORD:
+                    st.session_state.logged_in = True
+                    st.session_state.user_id = username_input
+                    st.session_state.user_role = db[username_input]["role"]
+                    st.session_state.user_nama = db[username_input]["nama"]
+                    st.rerun()
+                else: st.error("❌ Password salah.")
+            else: st.error("❌ Username tidak terdaftar.")
+            
+        if go_to_reset:
+            st.session_state.halaman_akses = "reset_page"
+            st.rerun()
+            
+    # KONDISI 2: DIALIHKAN KE LAMAN RESET PASSWORD
+    elif st.session_state.halaman_akses == "reset_page":
+        st.markdown("### 🔑 Laman Reset Password Member")
+        st.caption("Silakan isi password baru Anda terlebih dahulu, kemudian kirimkan kode verifikasi pengajuan ke Admin.")
         
         username_reset = st.text_input("Masukkan Username Anda:").strip()
+        password_baru = st.text_input("Masukkan Password Baru:", type="password")
         
-        if st.button("🔴 Buat Kode Reset & Kirim ke Admin"):
+        if st.button("🔴 Ajukan Perubahan & Kirim Kode ke Admin"):
             if username_reset in st.session_state.user_database:
-                kode_acak = str(random.randint(100000, 999999))
-                st.session_state.reset_codes[username_reset] = {
-                    "code": kode_acak,
-                    "approved": False
-                }
-                st.success(f"✅ Permintaan sukses! Kode verifikasi baru telah dikirimkan ke Admin. Silakan hubungi Owner Gym (Ardi) untuk melanjutkan.")
+                if password_baru.strip() == "":
+                    st.error("❌ Password baru tidak boleh kosong.")
+                else:
+                    # Buat kode acak 6 digit dan amankan data password baru sementara
+                    kode_acak = str(random.randint(100000, 999999))
+                    st.session_state.reset_requests[username_reset] = {
+                        "code": kode_acak,
+                        "new_password": password_baru,
+                        "approved": False
+                    }
+                    st.success(f"✅ Password baru tersimpan sementara! Kode Otorisasi `{kode_acak}` telah dikirimkan ke Admin. Silakan hubungi Owner Gym (Ardi) untuk menyetujui.")
             else:
                 st.error("❌ Username tidak ditemukan.")
-
+                
         st.write("---")
-        st.markdown("#### 🔑 Langkah 2: Masukkan Password Baru (Setelah disetujui Admin)")
         
-        with st.form("form_proses_reset"):
-            usr_verif = st.text_input("Username").strip()
-            pass_baru = st.text_input("Password Baru Anda", type="password")
-            submit_reset = st.form_submit_button("Perbarui Password")
-            
-            if submit_reset:
-                if usr_verif in st.session_state.reset_codes:
-                    if st.session_state.reset_codes[usr_verif]["approved"]:
-                        st.session_state.user_database[usr_verif]["password"] = pass_baru
-                        del st.session_state.reset_codes[usr_verif]
-                        st.success("🎉 Password Anda berhasil diperbarui! Silakan kembali ke menu 'Login Masuk'.")
-                    else:
-                        st.error("❌ Gagal! Permintaan reset Anda belum diverifikasi/disetujui oleh Admin di aplikasinya.")
-                else:
-                    st.error("❌ Tidak ada riwayat pengajuan kode reset untuk username tersebut.")
+        # Mengecek status otorisasi real-time
+        if username_reset in st.session_state.reset_requests:
+            req_data = st.session_state.reset_requests[username_reset]
+            if req_data["approved"]:
+                # Eksekusi pembaruan database jika admin telah menyetujui
+                st.session_state.user_database[username_reset]["password"] = req_data["new_password"]
+                del st.session_state.reset_requests[username_reset] # bersihkan antrean
+                st.success("🎉 Otorisasi Admin Berhasil! Password Anda telah diperbarui.")
+                
+                # Alihkan kembali ke laman login utama secara otomatis
+                st.session_state.halaman_akses = "login"
+                st.info("Kembali ke halaman login...")
+                st.button("Klik untuk Masuk Kembali")
+                st.rerun()
+            else:
+                st.info("⏳ Menunggu Otorisasi Admin... Tekan tombol di bawah untuk menyegarkan status jika Admin sudah klik setuju.")
+                if st.button("🔄 Cek Status Otorisasi"):
+                    st.rerun()
+                    
+        if st.button("⬅️ Batalkan & Kembali ke Login"):
+            st.session_state.halaman_akses = "login"
+            st.rerun()
 
 # --- 8. INTERFACE SETELAH LOGIN ---
 else:
@@ -235,20 +260,19 @@ else:
         st.sidebar.markdown("👥 **Daftar Seluruh Member & Password:**")
         for usr_id, detail in st.session_state.user_database.items():
             role_badge = "👑 Admin" if detail["role"] == "admin" else "🏃 Member"
-            # Ditambahkan informasi password langsung di bawah nama member
             st.sidebar.text(f"• {detail['nama']} ({usr_id})\n  🔑 Pass: {detail['password']}\n  [{role_badge}]")
             
-        # PENGELOLAAN KODE LUPA PASSWORD (HANYA MUNCUL DI SIDEBAR ADMIN)
-        if st.session_state.reset_codes:
+        # OTORISASI PERMINTAAN RESET PASSWORD YANG DIAJUKAN MEMBER
+        if st.session_state.reset_requests:
             st.sidebar.write("---")
-            st.sidebar.warning("🚨 **Permintaan Reset Password:**")
-            for u_target, data_c in list(st.session_state.reset_codes.items()):
-                if not data_c["approved"]:
+            st.sidebar.warning("🚨 **Otorisasi Reset Password:**")
+            for u_target, data_r in list(st.session_state.reset_requests.items()):
+                if not data_r["approved"]:
                     st.sidebar.write(f"Member: **{u_target}**")
-                    st.sidebar.info(f"Kode Reset: `{data_c['code']}`")
-                    if st.sidebar.button(f"Setujui Reset {u_target}"):
-                        st.session_state.reset_codes[u_target]["approved"] = True
-                        st.sidebar.success(f"Akses diberikan untuk {u_target}")
+                    st.sidebar.info(f"Kode Pengajuan: `{data_r['code']}`")
+                    if st.sidebar.button(f"Selesaikan Otorisasi {u_target}"):
+                        st.session_state.reset_requests[u_target]["approved"] = True
+                        st.sidebar.success(f"Akses diberikan untuk {u_target}!")
                         st.rerun()
 
     # MENU GANTI PASSWORD MANDIRI UNTUK SEMUA USER (MEMBER & ADMIN)
