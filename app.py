@@ -31,7 +31,6 @@ def load_data_from_github():
                 return pd.DataFrame(columns=KOLOM_DATABASE), file_json["sha"]
             
             df = pd.read_csv(StringIO(content))
-            # Pastikan kolom Tanggal langsung dikonversi ke datetime di sini
             if "Tanggal" in df.columns:
                 df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors='coerce')
             return df, file_json["sha"]
@@ -43,7 +42,6 @@ def load_data_from_github():
         return pd.DataFrame(columns=KOLOM_DATABASE), None
 
 def save_data_to_github(df, sha=None):
-    # Salin dataframe dan ubah tipe Tanggal ke string agar seragam di CSV
     df_save = df.copy()
     if "Tanggal" in df_save.columns:
         df_save["Tanggal"] = df_save["Tanggal"].astype(str)
@@ -77,7 +75,58 @@ if "user_database" not in st.session_state:
         "Sefitri": {"password": "Cepi123", "role": "member", "nama": "Sefitri"}
     }
 
-# --- 4. INITIALIZE JADWAL GYM ---
+# --- 4. DATABASE REKOMENDASI GERAKAN ALTERNATIF (SISTEM) ---
+# Berfungsi memberikan alternatif otomatis berdasarkan gerakan utama yang dipilih
+KAMUS_GERAKAN_ALTERNATIF = {
+    # Chest
+    "Barbell Bench Press": ["Dumbbell Bench Press", "Smith Machine Bench Press", "Chest Press Machine"],
+    "Incline Dumbbell Press": ["Incline Barbell Press", "Incline Smith Machine Press", "Incline Chest Press Machine"],
+    "Chest Press Machine": ["Hammer Strength Chest Press", "Push Up (Weighted)", "Floor Press"],
+    "Cable Fly": ["Pec Deck Fly", "Dumbbell Fly", "Low-to-High Cable Fly"],
+    "Pec Deck Fly": ["Cable Fly", "Dumbbell Fly"],
+    # Back
+    "Pull Up / Lat Pulldown": ["Assisted Pull Up", "Wide Grip Lat Pulldown", "Close Grip Lat Pulldown"],
+    "Barbell Row": ["Pendlay Row", "T-Bar Row", "Smith Machine Row"],
+    "Seated Cable Row": ["Chest Supported Row", "Dumbbell Row", "Machine Row"],
+    "Straight Arm Pulldown": ["Cable Pullover", "Dumbbell Pullover"],
+    "Single Arm Dumbbell Row": ["Single Arm Cable Row", "Meadows Row"],
+    "Chest Supported Row": ["Seated Cable Row", "T-Bar Row"],
+    # Shoulder / Rear Delt
+    "Face Pull": ["Rear Delt Fly Machine", "Bent Over Dumbbell Lateral Raise", "Rope Face Pull (High Custom)"],
+    "Dumbbell Shoulder Press": ["Military Press Barbell", "Smith Machine Shoulder Press", "Machine Shoulder Press"],
+    "Lateral Raise": ["Cable Lateral Raise", "Machine Lateral Raise", "Dumbbell Lean-Away Lateral Raise"],
+    "Rear Delt Fly": ["Face Pull", "Reverse Pec Deck"],
+    # Triceps
+    "Rope Pushdown": ["Straight Bar Pushdown", "V-Bar Pushdown", "Triceps Pushdown Machine"],
+    "Overhead Cable Triceps Extension": ["Overhead Dumbbell Extension", "Skull Crusher", "EZ Bar Overhead Extension"],
+    "Close Grip Bench Press": ["Dips", "Diamond Push Up", "Close Grip Smith Machine Press"],
+    "Overhead Dumbbell Triceps Extension": ["Overhead Cable Triceps Extension", "Skull Crusher"],
+    # Biceps
+    "EZ Bar Curl": ["Barbell Curl", "Cable Curl", "Spider Curl"],
+    "Incline Dumbbell Curl": ["Dumbbell Biceps Curl", "Preacher Curl", "Concentration Curl"],
+    "Hammer Curl": ["Cable Hammer Curl", "Rope Hammer Curl", "Dumbbell Cross Body Hammer Curl"],
+    "Barbell Curl": ["EZ Bar Curl", "Dumbbell Curl", "Cable Curl"],
+    "Preacher Curl": ["Machine Preacher Curl", "Incline Dumbbell Curl"],
+    "Cable Curl": ["EZ Bar Biceps Curl", "Dumbbell Curl"],
+    # Lower Body / Legs
+    "Back Squat": ["Safety Bar Squat", "Hack Squat", "Smith Machine Squat", "Goblet Squat"],
+    "Front Squat": ["Goblet Squat", "Zercher Squat", "Leg Press (High Stance)"],
+    "Leg Press": ["Hack Squat", "V-Squat Machine", "Pendulum Squat"],
+    "Leg Extension": ["Sissy Squat", "Bodyweight Leg Extension"],
+    "Romanian Deadlift": ["Dumbbell RDL", "Smith Machine RDL", "Good Morning"],
+    "Bulgarian Split Squat": ["Dumbbell Lunges", "Deficit Reverse Lunges", "Smith Machine Split Squat"],
+    "Walking Lunges": ["Reverse Lunges", "Stationary Lunges", "Step Up"],
+    "Leg Curl": ["Seated Leg Curl", "Lying Leg Curl Machine", "Nordic Hamstring Curl"],
+    "Seated Leg Curl": ["Lying Leg Curl", "Romanian Deadlift"],
+    "Hip Thrust": ["Glute Bridge", "Smith Machine Hip Thrust", "Kabel Pull-Through"],
+    "Standing Calf Raise": ["Leg Press Calf Press", "Smith Machine Calf Raise"],
+    "Seated Calf Raise": ["Standing Calf Raise", "Donkey Calf Raise"],
+    # Abs
+    "Hanging Leg Raise": ["Captain's Chair Leg Raise", "Lying Leg Raise", "V-Ups"],
+    "Hanging Leg Raise / Cable Crunch": ["Cable Crunch", "Hanging Leg Raise", "Ab Wheel Rollout"]
+}
+
+# --- 5. INITIALIZE JADWAL GYM UTAMA ---
 if "jadwal_gym_admin" not in st.session_state:
     st.session_state.jadwal_gym_admin = {
         "Hari 1 – Chest + Triceps": [
@@ -149,37 +198,36 @@ if "jadwal_gym_rara" not in st.session_state:
             {"nama": "Incline Dumbbell Curl", "target": "3 × 12"},
             {"nama": "Hammer Curl", "target": "3 × 12"}
         ],
-        "Hari 3 – Upper Body + Leg": [
-            {"nama": "Incline Smith Machine Press", "target": "4 × 10"},
-            {"nama": "Pec Deck Fly", "target": "3 × 15"},
-            {"nama": "Chest Supported Row", "target": "4 × 10"},
-            {"nama": "Dumbbell Shoulder Press", "target": "3 × 10"},
-            {"nama": "Lateral Raise", "target": "4 × 15"},
+        "Hari 3 – Leg": [
             {"nama": "Romanian Deadlift", "target": "4 × 8"},
+            {"nama": "Bulgarian Split Squat", "target": "3 × 10/kaki"},
             {"nama": "Walking Lunges", "target": "3 × 12/kaki"},
             {"nama": "Leg Curl", "target": "3 × 12"},
-            {"nama": "Standing Calf Raise", "target": "4 × 15"}
+            {"nama": "Hip Thrust", "target": "4 × 10"},
+            {"nama": "Standing Calf Raise", "target": "4 × 15"},
+            {"nama": "Seated Calf Raise", "target": "4 × 20"}
         ],
         "Hari 4 – Full Arms": [
             {"nama": "Close Grip Bench Press", "target": "4 × 10"},
+            {"nama": "Rope Pushdown", "target": "3 × 15"},
+            {"nama": "Overhead Dumbbell Triceps Extension", "target": "3 × 12"},
             {"nama": "Barbell Curl", "target": "3 × 10"},
             {"nama": "Preacher Curl", "target": "3 × 10"},
             {"nama": "Hammer Curl", "target": "3 × 12"},
-            {"nama": "Rope Pushdown", "target": "3 × 15"},
-            {"nama": "Overhead Dumbbell Triceps Extension", "target": "3 × 12"},
             {"nama": "Wrist Curl", "target": "3 × 15"},
             {"nama": "Reverse Wrist Curl", "target": "3 × 15"}
         ],
-        "Hari 5 – Lower Body Full": [
-            {"nama": "Front Squat / Hack Squat", "target": "4 × 10"},
+        "Hari 5 – Full Lower Body": [
+            {"nama": "Front Squat", "target": "4 × 10"},
             {"nama": "Romanian Deadlift", "target": "4 × 8"},
             {"nama": "Leg Press", "target": "3 × 12"},
             {"nama": "Leg Extension", "target": "3 × 15"},
             {"nama": "Seated Leg Curl", "target": "3 × 15"},
             {"nama": "Hip Thrust", "target": "4 × 10"},
+            {"nama": "Walking Lunges", "target": "3 × 12/kaki"},
+            {"nama": "Standing Calf Raise", "target": "4 × 15"},
             {"nama": "Seated Calf Raise", "target": "4 × 20"},
-            {"nama": "Hanging Leg Raise", "target": "3 × 15"},
-            {"nama": "Cable Crunch", "target": "3 × 15"}
+            {"nama": "Hanging Leg Raise", "target": "3 × 15"}
         ]
     }
 
@@ -216,7 +264,7 @@ if "jadwal_gym_member_umum" not in st.session_state:
             {"nama": "Cable Curl", "target": "3 × 12"},
             {"nama": "Preacher Curl", "target": "3 × 10"},
             {"nama": "Rope Pushdown", "target": "3 × 15"},
-            {"nama": "Overhead Dumbbell Triceps Extension", "target": "3 × 12"}
+            {"hover": "Overhead Dumbbell Triceps Extension", "target": "3 × 12"}
         ],
         "Hari 4 – Full Lower Body": [
             {"nama": "Back Squat", "target": "4 × 8"},
@@ -232,14 +280,14 @@ if "jadwal_gym_member_umum" not in st.session_state:
         ]
     }
 
-# --- 5. INITIALIZE STATUS LOGIN ---
+# --- 6. INITIALIZE STATUS LOGIN ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_id = None
     st.session_state.user_role = None
     st.session_state.user_nama = None
 
-# --- 6. INTERFACE SEBELUM LOGIN ---
+# --- 7. INTERFACE SEBELUM LOGIN ---
 if not st.session_state.logged_in:
     st.title("🏋️‍♂️ Gym Private Member Portal")
     with st.form("login_form"):
@@ -256,12 +304,10 @@ if not st.session_state.logged_in:
                     st.session_state.user_role = db[username_input]["role"]
                     st.session_state.user_nama = db[username_input]["nama"]
                     st.rerun()
-                else: 
-                    st.error("❌ Password salah.")
-            else: 
-                st.error("❌ Username tidak terdaftar.")
+                else: st.error("❌ Password salah.")
+            else: st.error("❌ Username tidak terdaftar.")
 
-# --- 7. INTERFACE SETELAH LOGIN ---
+# --- 8. INTERFACE SETELAH LOGIN ---
 else:
     st.title("🏋️‍♂️ Universal Gym Tracker Portal")
     st.markdown(f"### 🎉 Halo **{st.session_state.user_nama}**")
@@ -304,91 +350,89 @@ else:
         nama_hari_indonesia = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][hari_index]
         st.subheader(f"📆 Hari Ini: {nama_hari_indonesia}")
 
-        # --- LOGIKATOR KUNCI JADWAL HARIAN ---
         is_rest_day = False
         
         if nama_hari_indonesia == "Selasa":
             hari_rara = "Hari 2 – Back + Biceps"
             hari_admin = "Hari 2 – Back + Biceps"  
             hari_member_umum = "Hari 1 – Back + Biceps"
-            info_hari_teks = "📌 **Hari Selasa:** Rara berada di **Hari 2**, Admin di **Hari 2**, Member Lain di **Hari 1 (Back + Biceps)**."
-            
+            info_rara = "📌 **Hari Selasa:** Jadwal Anda **Hari 2 (Back + Biceps)**."
+            info_admin = "📌 **Hari Selasa:** Jadwal Admin **Hari 2 (Back + Biceps)**."
+            info_umum = "📌 **Hari Selasa:** Jadwal Member **Hari 1 (Back + Biceps)**."
         elif nama_hari_indonesia == "Rabu":
-            hari_rara = "Hari 3 – Upper Body + Leg"
+            hari_rara = "Hari 3 – Leg"
             hari_admin = "REST"
             hari_member_umum = "Hari 2 – Chest + Triceps"
-            info_hari_teks = "📌 **Hari Rabu:** Rara berada di **Hari 3**, Member Lain di **Hari 2 (Chest + Triceps)**. Admin dijadwalkan **REST**."
+            info_rara = "📌 **Hari Rabu:** Jadwal Anda **Hari 3 (Leg)**."
+            info_admin = "📌 **Hari Rabu:** Jadwal Anda hari ini adalah **REST / Istirahat**."
+            info_umum = "📌 **Hari Rabu:** Jadwal Member **Hari 2 (Chest + Triceps)**."
             if st.session_state.user_role == "admin":
                 is_rest_day = True
-                
         else:
-            # Jadwal default harian reguler selain Selasa & Rabu
             hari_rara = "Hari 1 – Chest + Leg + Triceps"
             hari_admin = "Hari 1 – Chest + Triceps"
             hari_member_umum = "Hari 2 – Chest + Triceps"
-            info_hari_teks = f"📌 **Hari {nama_hari_indonesia}:** Menggunakan pengaturan jadwal harian reguler."
-
-        st.info(info_hari_teks)
+            info_rara = f"📌 **Hari {nama_hari_indonesia}:** Menggunakan pengaturan jadwal harian reguler."
+            info_admin = f"📌 **Hari {nama_hari_indonesia}:** Menggunakan pengaturan jadwal harian reguler."
+            info_umum = f"📌 **Hari {nama_hari_indonesia}:** Menggunakan pengaturan jadwal harian reguler."
 
         if is_rest_day:
+            st.info(info_admin)
             st.success("🧘‍♂️ Hari ini jadwalnya **REST/Istirahat**! Pulihkan otot Anda dengan baik.")
         else:
-            # Pemilihan gerakan berdasarkan user aktif jika tidak sedang REST
             if st.session_state.user_id == "Rara":
+                st.info(info_rara)
                 jadwal_aktif = st.session_state.jadwal_gym_rara
                 pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_rara], disabled=True)
-                
-                if hari_index in [0, 2, 4]:  # Senin, Rabu, Jumat
-                    st.warning("⚠️ Akun Rara terdeteksi memiliki jadwal TAMBAHAN latihan otot kaki!")
-                    opsi_kaki = st.checkbox("Ambil menu Tambahan Kaki")
-                    if opsi_kaki:
-                        daftar_gerakan = ["Leg Extension (Kaki Rara)", "Seated Leg Curl (Kaki Rara)", "Calf Raises (Kaki Rara)"]
-                        gerakan_pilihan = st.selectbox("Pilih Gerakan Tambahan:", daftar_gerakan)
-                        target_bawaan = "3 × 12"
-                    else:
-                        daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
-                        gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
-                        target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
-                else:
-                    daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
-                    gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
-                    target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
-
             elif st.session_state.user_role == "admin":
+                st.info(info_admin)
                 jadwal_aktif = st.session_state.jadwal_gym_admin
                 pilihan_menu = st.selectbox("Jadwal Latihan Admin Hari Ini:", [hari_admin], disabled=True)
-                daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
-                gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
-                target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
-
             else:
+                st.info(info_umum)
                 jadwal_aktif = st.session_state.jadwal_gym_member_umum
                 pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_member_umum], disabled=True)
-                daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
-                gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
-                target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
 
-            st.success(f"🎯 Target Panduan: **{target_bawaan}**")
+            # 1. Pilih Gerakan Utama dari Jadwal yang Sudah Ditentukan
+            daftar_gerakan_default = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
+            gerakan_utama_dipilih = st.selectbox("Pilih Gerakan Target Utama:", daftar_gerakan_default)
+            
+            # Ambil target bawaan (set x reps) gerakan utama
+            target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_utama_dipilih)
+
+            # 2. SISTEM REKOMENDASI GERAKAN ALTERNATIF OTOMATIS
+            # Cari apakah gerakan utama tersebut memiliki variasi di kamus sistem
+            opsi_rekomendasi_sistem = KAMUS_GERAKAN_ALTERNATIF.get(gerakan_utama_dipilih, [])
+            
+            gerakan_pilihan_final = gerakan_utama_dipilih
+            
+            if opsi_rekomendasi_sistem:
+                gunakan_variasi = st.checkbox("🔄 Gunakan Rekomendasi Gerakan Alternatif (Alat Penuh / Bosan)")
+                if gunakan_variasi:
+                    # Sistem menyajikan pilihan alternatif khusus untuk melatih otot yang sama
+                    gerakan_pilihan_final = st.selectbox(
+                        "Sistem merekomendasikan gerakan alternatif berikut (Target Otot Sama):",
+                        opsi_rekomendasi_sistem
+                    )
+                    target_bawaan = f"{target_bawaan.split(' ')[0]} × 10-12 (Variasi Otot)"
+
+            st.success(f"🎯 Gerakan Aktif: **{gerakan_pilihan_final}** | Target Panduan: **{target_bawaan}**")
 
             # --- ENGINE PROGRESSIVE OVERLOAD ---
             beban_dasar_minggu_ini = 0.0
             info_progres = "Sesi pertama untuk gerakan ini. Mulai dengan beban yang aman."
             
             if not df_logs.empty:
-                # Filter log khusus user ini dan gerakan ini
-                user_logs = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Gerakan"] == gerakan_pilihan)].copy()
-                
+                user_logs = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Gerakan"] == gerakan_pilihan_final)].copy()
                 if not user_logs.empty:
                     hari_ini_tgl = datetime.date.today()
-                    # Pastikan filter perbandingan tanggal berjalan aman
                     logs_sesi_lalu = user_logs[user_logs["Tanggal"].dt.date < hari_ini_tgl]
-                    
                     if not logs_sesi_lalu.empty:
                         tgl_terakhir = logs_sesi_lalu["Tanggal"].max()
                         sesi_terakhir = logs_sesi_lalu[logs_sesi_lalu["Tanggal"] == tgl_terakhir]
                         beban_maks_minggu_lalu = sesi_terakhir["Beban_kg"].max()
                         beban_dasar_minggu_ini = beban_maks_minggu_lalu + 2.5
-                        info_progres = f"📈 Progres Mingguan: Target beban dasar naik menjadi: **{beban_dasar_minggu_ini}kg** (+2.5kg dari beban tertinggi sesi sebelumnya)."
+                        info_progres = f"📈 Progres: Target beban dasar naik: **{beban_dasar_minggu_ini}kg** (+2.5kg dari beban tertinggi sesi sebelumnya)."
                     else:
                         beban_dasar_minggu_ini = user_logs["Beban_kg"].min()
                         info_progres = "Melanjutkan sesi latihan hari ini."
@@ -408,7 +452,7 @@ else:
                     new_log = pd.DataFrame([{
                         "Tanggal": pd.to_datetime(datetime.date.today()),
                         "Username": st.session_state.user_id,
-                        "Gerakan": gerakan_pilihan,
+                        "Gerakan": gerakan_pilihan_final,
                         "Set_Ke": int(set_ke),
                         "Beban_kg": float(berat),
                         "Reps": int(reps)
@@ -416,16 +460,15 @@ else:
                     df_updated = pd.concat([df_logs, new_log], ignore_index=True)
                     
                     if save_data_to_github(df_updated, file_sha):
-                        st.success(f"Set {set_ke} berhasil disimpan secara permanen ke Database Cloud!")
+                        st.success(f"Set {set_ke} untuk gerakan '{gerakan_pilihan_final}' berhasil disimpan!")
                         st.cache_data.clear()
                         st.rerun()
                     else:
-                        st.error("Gagal menyimpan ke database Cloud. Cek koneksi internet atau token GitHub Anda.")
+                        st.error("Gagal menyimpan ke database Cloud. Cek koneksi internet Anda.")
 
         # --- MONITORING CATATAN HARI INI ---
         st.write("---")
         st.subheader("📋 Catatan Latihan Anda Hari Ini")
-        
         df_hari_ini = pd.DataFrame()
         if not df_logs.empty:
             df_hari_ini = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date == datetime.date.today())]
@@ -433,20 +476,19 @@ else:
         if not df_hari_ini.empty:
             st.dataframe(df_hari_ini[["Gerakan", "Set_Ke", "Beban_kg", "Reps"]].reset_index(drop=True), use_container_width=True)
             st.balloons()
-            st.success("🎉 **YEAY! LATIHAN SELESAI!** 💪 *Nikmati DOMS nya besok.*")
+            st.success("🎉 **YEAY! LATIHAN SELESAI!** 💪")
         else:
             st.caption("Belum ada set yang disimpan hari ini.")
 
     # ==================== TAB 2: PROGRESS LATIHAN ====================
     with tab_progress:
         st.subheader("📊 Analisis & Riwayat Progress")
-        
         df_user_all = pd.DataFrame()
         if not df_logs.empty:
             df_user_all = df_logs[df_logs["Username"] == st.session_state.user_id].copy()
         
         if df_user_all.empty:
-            st.info("Belum ada riwayat latihan yang tercatat untuk akun Anda.")
+            st.info("Belum ada riwayat latihan.")
         else:
             df_user_all["Bulan"] = df_user_all["Tanggal"].dt.strftime("%Y-%m (%B)")
             df_user_all["Tanggal_Saja"] = df_user_all["Tanggal"].dt.date
@@ -491,5 +533,3 @@ else:
                 df_chart = df_chart.set_index("Tanggal")
                 
                 st.line_chart(df_chart, y="Beban Maksimal (kg)")
-                with st.expander("Lihat Angka Detil Kenaikan"):
-                    st.dataframe(df_chart.sort_index(ascending=False), use_container_width=True)
