@@ -318,9 +318,22 @@ else:
     st.markdown("##### *Semangat Latihan ya hari ini!* 🔥")
     st.write("---")
 
+    # === PANEL SIDEBAR KIRI ===
     st.sidebar.markdown(f"👤 **Pengguna:** {st.session_state.user_nama}")
     st.sidebar.markdown(f"🔰 **Akses:** `{st.session_state.user_role.upper()}`")
     
+    # KONDISI KHUSUS ADMIN: MELIHAT DAFTAR SELURUH MEMBER DI SIDEBAR
+    if st.session_state.user_role == "admin":
+        st.sidebar.write("---")
+        st.sidebar.markdown("👥 **Daftar Seluruh Member:**")
+        
+        # Iterasi mengambil seluruh user dari database
+        for usr_id, detail in st.session_state.user_database.items():
+            role_badge = "👑 Admin" if detail["role"] == "admin" else "🏃 Member"
+            # Menampilkan nama asli dan username di sidebar
+            st.sidebar.text(f"• {detail['nama']} ({usr_id}) \n  [{role_badge}]")
+            
+    st.sidebar.write("---")
     if st.sidebar.button("Keluar / Logout 🚪"):
         st.session_state.logged_in = False
         st.session_state.user_id = None
@@ -361,7 +374,7 @@ else:
                 pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_rara], disabled=True)
             elif st.session_state.user_role == "admin":
                 jadwal_aktif = st.session_state.jadwal_gym_admin
-                pselectbox = st.selectbox("Jadwal Latihan Admin Hari Ini:", [hari_admin], disabled=True)
+                pilihan_menu = st.selectbox("Jadwal Latihan Admin Hari Ini:", [hari_admin], disabled=True)
             else:
                 jadwal_aktif = st.session_state.jadwal_gym_member_umum
                 pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_member_umum], disabled=True)
@@ -407,7 +420,6 @@ else:
 
             st.success(f"🎯 Gerakan Aktif: **{gerakan_pilihan_final}** | Target Panduan: **{target_bawaan}**")
 
-            # --- AMBIL DATA SET HARI INI & BERAT SEBELUMNYA ---
             beban_set_sebelumnya_hari_ini = 0.0
             set_terakhir_tersimpan = 0
             
@@ -423,11 +435,9 @@ else:
 
             set_berikutnya = set_terakhir_tersimpan + 1
 
-            # --- FORM ENTRI INPUT SET DENGAN VALIDASI PROGRESSIVE OVERLOAD ---
             with st.form("log_latihan_form"):
                 st.markdown(f"#### 📝 Mengisi Data **Set Ke-{set_berikutnya}**")
                 
-                # Input berat awal bebas di set 1, tapi wajib naik di set berikutnya
                 if set_berikutnya == 1:
                     st.caption("💡 Ini adalah Set Pertama Anda hari ini. Silakan tentukan berat awal sesuka Anda.")
                     berat = st.number_input("Beban Latihan Realisasi (kg)", min_value=0.0, value=10.0, step=2.5)
@@ -439,7 +449,6 @@ else:
                 submit_log = st.form_submit_button(f"💾 Simpan Set {set_berikutnya}")
                 
                 if submit_log:
-                    # Validasi ketat jika bukan set pertama
                     if set_berikutnya > 1 and berat <= beban_set_sebelumnya_hari_ini:
                         st.error(f"❌ Gagal Menyimpan! Anda tidak menambah beban. Beban harus lebih besar dari set sebelumnya ({beban_set_sebelumnya_hari_ini} kg) jika ingin melanjutkan!")
                     else:
