@@ -2,19 +2,67 @@ import streamlit as st
 import pandas as pd
 import datetime
 import os
+import requests
+import base64
+from io import StringIO
 
 # --- 1. CONFIG HALAMAN MOBILE ---
 st.set_page_config(page_title="Gym Member Portal", page_icon="🔒", layout="centered")
 
-# --- 2. MASTER PASSWORD & FILE DATABASE LOG (DENGAN PROTEKSI TABEL CSV) ---
-MASTER_PASSWORD = "superowner2026"  
+# --- 2. INTEGRASI GITHUB UNTUK PERSISTENSI DATA CSV ---
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+REPO_NAME = st.secrets["REPO_NAME"] 
 LOG_FILE = "gym_workout_logs.csv"
 KOLOM_DATABASE = ["Tanggal", "Username", "Gerakan", "Set_Ke", "Beban_kg", "Reps"]
+MASTER_PASSWORD = st.secrets.get("MASTER_PASSWORD", "superowner2026")
 
-# Jika file tidak ada ATAU file ada tapi kosong (0 bytes), buat baru dengan format tabel lengkap
-if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) == 0:
-    df_empty = pd.DataFrame(columns=KOLOM_DATABASE)
-    df_empty.to_csv(LOG_FILE, index=False)
+GITHUB_API_URL = f"https://api.github.com/repos/{REPO_NAME}/contents/{LOG_FILE}"
+HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+
+@st.cache_data(ttl=5)
+def load_data_from_github():
+    try:
+        response = requests.get(GITHUB_API_URL, headers=HEADERS)
+        if response.status_code == 200:
+            file_json = response.json()
+            content = base64.b64decode(file_json["content"]).decode("utf-8")
+            
+            if not content.strip():
+                return pd.DataFrame(columns=KOLOM_DATABASE), file_json["sha"]
+            
+            df = pd.read_csv(StringIO(content))
+            # Pastikan kolom Tanggal langsung dikonversi ke datetime di sini
+            if "Tanggal" in df.columns:
+                df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors='coerce')
+            return df, file_json["sha"]
+        else:
+            df_empty = pd.DataFrame(columns=KOLOM_DATABASE)
+            return df_empty, None
+    except Exception as e:
+        st.error(f"Error membaca repositori GitHub: {e}")
+        return pd.DataFrame(columns=KOLOM_DATABASE), None
+
+def save_data_to_github(df, sha=None):
+    # Salin dataframe dan ubah tipe Tanggal ke string agar seragam di CSV
+    df_save = df.copy()
+    if "Tanggal" in df_save.columns:
+        df_save["Tanggal"] = df_save["Tanggal"].astype(str)
+        
+    csv_buffer = df_save.to_csv(index=False)
+    content_b64 = base64.b64encode(csv_buffer.encode("utf-8")).decode("utf-8")
+    
+    payload = {
+        "message": f"Update gym logs - {datetime.date.today()}",
+        "content": content_b64
+    }
+    if sha:
+        payload["sha"] = sha
+
+    response = requests.put(GITHUB_API_URL, headers=HEADERS, json=payload)
+    return response.status_code in [200, 201]
+
+# Tarik data dari GitHub sejak awal aplikasi dimuat
+df_logs, file_sha = load_data_from_github()
 
 # --- 3. DATABASE USER ---
 if "user_database" not in st.session_state:
@@ -30,7 +78,6 @@ if "user_database" not in st.session_state:
     }
 
 # --- 4. INITIALIZE JADWAL GYM ---
-# Jadwal 4 Hari untuk Admin
 if "jadwal_gym_admin" not in st.session_state:
     st.session_state.jadwal_gym_admin = {
         "Hari 1 – Chest + Triceps": [
@@ -79,7 +126,6 @@ if "jadwal_gym_admin" not in st.session_state:
         ]
     }
 
-# Jadwal 5 Hari untuk Rara
 if "jadwal_gym_rara" not in st.session_state:
     st.session_state.jadwal_gym_rara = {
         "Hari 1 – Chest + Leg + Triceps": [
@@ -137,7 +183,6 @@ if "jadwal_gym_rara" not in st.session_state:
         ]
     }
 
-# Jadwal 4 Hari untuk Member Umum
 if "jadwal_gym_member_umum" not in st.session_state:
     st.session_state.jadwal_gym_member_umum = {
         "Hari 1 – Back + Biceps": [
@@ -219,8 +264,6 @@ if not st.session_state.logged_in:
 # --- 7. INTERFACE SETELAH LOGIN ---
 else:
     st.title("🏋️‍♂️ Universal Gym Tracker Portal")
-    
-    # --- SALAM PEMBUKA KUSTOM ---
     st.markdown(f"### 🎉 Halo **{st.session_state.user_nama}**")
     st.markdown("##### *Semangat Latihan ya hari ini!* 🔥")
     st.write("---")
@@ -235,7 +278,6 @@ else:
         st.session_state.user_nama = None
         st.rerun()
 
-    # --- FITUR UBAH PASSWORD MANDIRI ---
     with st.sidebar.expander("🔑 Ubah Password Saya"):
         with st.form("change_password_form", clear_on_submit=True):
             pass_baru = st.text_input("Password Baru", type="password")
@@ -247,35 +289,40 @@ else:
                     st.success("Password Anda berhasil diperbarui!")
                 else: st.error("❌ Password tidak cocok atau kosong.")
 
-    # --- CONTROL PANEL ADMIN ---
     if st.session_state.user_role == "admin":
         st.sidebar.markdown("---")
         st.sidebar.subheader("🛠️ Admin Panel")
         with st.sidebar.expander("📋 Lihat Data Password Member"):
             st.json(st.session_state.user_database)
 
-    # --- PEMBAGIAN MENU TAB (INPUT VS PROGRESS) ---
+    # PEMBAGIAN MENU TAB
     tab_input, tab_progress = st.tabs(["🏋️ Latihan Hari Ini", "📊 Progress Latihan"])
-
-    # Load DB log di awal untuk kedua tab
-    df_logs = pd.read_csv(LOG_FILE)
-    df_logs["Tanggal"] = pd.to_datetime(df_logs["Tanggal"], errors='coerce')
 
     # ==================== TAB 1: INPUT LATIHAN ====================
     with tab_input:
-        # --- DETEKSI HARI REAL-TIME & PEMETAAN HARI OTOMATIS ---
         hari_index = datetime.datetime.now().weekday()
         nama_hari_indonesia = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][hari_index]
-        
         st.subheader(f"📆 Hari Ini: {nama_hari_indonesia}")
 
-        # Penyetelan Otomatis Hari Latihan (Kunci Khusus Hari Selasa)
+        # --- LOGIKATOR KUNCI JADWAL HARIAN ---
+        is_rest_day = False
+        
         if nama_hari_indonesia == "Selasa":
             hari_rara = "Hari 2 – Back + Biceps"
             hari_admin = "Hari 2 – Back + Biceps"  
             hari_member_umum = "Hari 1 – Back + Biceps"
             info_hari_teks = "📌 **Hari Selasa:** Rara berada di **Hari 2**, Admin di **Hari 2**, Member Lain di **Hari 1 (Back + Biceps)**."
+            
+        elif nama_hari_indonesia == "Rabu":
+            hari_rara = "Hari 3 – Upper Body + Leg"
+            hari_admin = "REST"
+            hari_member_umum = "Hari 2 – Chest + Triceps"
+            info_hari_teks = "📌 **Hari Rabu:** Rara berada di **Hari 3**, Member Lain di **Hari 2 (Chest + Triceps)**. Admin dijadwalkan **REST**."
+            if st.session_state.user_role == "admin":
+                is_rest_day = True
+                
         else:
+            # Jadwal default harian reguler selain Selasa & Rabu
             hari_rara = "Hari 1 – Chest + Leg + Triceps"
             hari_admin = "Hari 1 – Chest + Triceps"
             hari_member_umum = "Hari 2 – Chest + Triceps"
@@ -283,99 +330,110 @@ else:
 
         st.info(info_hari_teks)
 
-        # --- PEMILIHAN DATA JADWAL SINKRON ---
-        if st.session_state.user_id == "Rara":
-            jadwal_aktif = st.session_state.jadwal_gym_rara
-            pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_rara], disabled=True)
-            
-            if hari_index in [0, 2, 4]:
-                st.warning("⚠️ Akun Rara terdeteksi memiliki jadwal TAMBAHAN latihan otot kaki!")
-                opsi_kaki = st.checkbox("Ambil menu Tambahan Kaki")
-                if opsi_kaki:
-                    daftar_gerakan = ["Leg Extension (Kaki Rara)", "Seated Leg Curl (Kaki Rara)", "Calf Raises (Kaki Rara)"]
-                    gerakan_pilihan = st.selectbox("Pilih Gerakan Tambahan:", daftar_gerakan)
-                    target_bawaan = "3 × 12"
+        if is_rest_day:
+            st.success("🧘‍♂️ Hari ini jadwalnya **REST/Istirahat**! Pulihkan otot Anda dengan baik.")
+        else:
+            # Pemilihan gerakan berdasarkan user aktif jika tidak sedang REST
+            if st.session_state.user_id == "Rara":
+                jadwal_aktif = st.session_state.jadwal_gym_rara
+                pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_rara], disabled=True)
+                
+                if hari_index in [0, 2, 4]:  # Senin, Rabu, Jumat
+                    st.warning("⚠️ Akun Rara terdeteksi memiliki jadwal TAMBAHAN latihan otot kaki!")
+                    opsi_kaki = st.checkbox("Ambil menu Tambahan Kaki")
+                    if opsi_kaki:
+                        daftar_gerakan = ["Leg Extension (Kaki Rara)", "Seated Leg Curl (Kaki Rara)", "Calf Raises (Kaki Rara)"]
+                        gerakan_pilihan = st.selectbox("Pilih Gerakan Tambahan:", daftar_gerakan)
+                        target_bawaan = "3 × 12"
+                    else:
+                        daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
+                        gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
+                        target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
                 else:
                     daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
                     gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
                     target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
-            else:
+
+            elif st.session_state.user_role == "admin":
+                jadwal_aktif = st.session_state.jadwal_gym_admin
+                pilihan_menu = st.selectbox("Jadwal Latihan Admin Hari Ini:", [hari_admin], disabled=True)
                 daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
                 gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
                 target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
 
-        elif st.session_state.user_role == "admin":
-            jadwal_aktif = st.session_state.jadwal_gym_admin
-            pilihan_menu = st.selectbox("Jadwal Latihan Admin Hari Ini:", [hari_admin], disabled=True)
-            daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
-            gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
-            target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
-
-        else:
-            jadwal_aktif = st.session_state.jadwal_gym_member_umum
-            pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_member_umum], disabled=True)
-            daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
-            gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
-            target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
-
-        st.success(f"🎯 Target Panduan: **{target_bawaan}**")
-
-        # ------ ENGINE PROGRESSIVE OVERLOAD ------
-        df_clean_logs = df_logs.dropna(subset=["Tanggal"])
-        user_logs = df_clean_logs[(df_clean_logs["Username"] == st.session_state.user_id) & (df_clean_logs["Gerakan"] == gerakan_pilihan)]
-        beban_dasar_minggu_ini = 0.0
-        info_progres = "Sesi pertama untuk gerakan ini. Mulai dengan beban yang aman."
-        
-        if not user_logs.empty:
-            hari_ini_tgl = pd.to_datetime(datetime.date.today())
-            logs_minggu_lalu = user_logs[user_logs["Tanggal"].dt.date < hari_ini_tgl.date()]
-            
-            if not logs_minggu_lalu.empty:
-                tgl_terakhir = logs_minggu_lalu["Tanggal"].max()
-                sesi_terakhir = logs_minggu_lalu[logs_minggu_lalu["Tanggal"] == tgl_terakhir]
-                beban_maks_minggu_lalu = sesi_terakhir["Beban_kg"].max()
-                beban_dasar_minggu_ini = beban_maks_minggu_lalu + 2.5
-                info_progres = f"📈 Progres Mingguan: Target beban dasar naik menjadi: **{beban_dasar_minggu_ini}kg** (+2.5kg dari beban tertinggi minggu lalu)."
             else:
-                beban_dasar_minggu_ini = user_logs["Beban_kg"].min()
-                info_progres = "Melanjutkan sesi latihan hari ini."
+                jadwal_aktif = st.session_state.jadwal_gym_member_umum
+                pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_member_umum], disabled=True)
+                daftar_gerakan = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
+                gerakan_pilihan = st.selectbox("Pilih Gerakan:", daftar_gerakan)
+                target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_pilihan)
 
-        st.markdown(f"💡 *{info_progres}*")
+            st.success(f"🎯 Target Panduan: **{target_bawaan}**")
 
-        # --- FORM ENTRI INPUT SET ---
-        with st.form("log_latihan_form"):
-            set_ke = st.number_input("Set Ke-", min_value=1, max_value=6, step=1)
-            rekomendasi_beban = beban_dasar_minggu_ini + ((set_ke - 1) * 2.5)
+            # --- ENGINE PROGRESSIVE OVERLOAD ---
+            beban_dasar_minggu_ini = 0.0
+            info_progres = "Sesi pertama untuk gerakan ini. Mulai dengan beban yang aman."
             
-            berat = st.number_input("Beban Latihan Realisasi (kg)", min_value=0.0, value=float(rekomendasi_beban), step=2.5)
-            reps = st.number_input("Repetisi Berhasil", min_value=0, step=1)
-            submit_log = st.form_submit_button("💾 Simpan Set Ini")
-            
-            if submit_log:
-                new_log = pd.DataFrame([{
-                    "Tanggal": str(datetime.date.today()),
-                    "Username": st.session_state.user_id,
-                    "Gerakan": gerakan_pilihan,
-                    "Set_Ke": set_ke,
-                    "Beban_kg": berat,
-                    "Reps": reps
-                }])
-                df_updated = pd.concat([df_logs, new_log], ignore_index=True)
-                df_updated.to_csv(LOG_FILE, index=False)
-                st.success(f"Set {set_ke} berhasil disimpan!")
-                st.rerun()
+            if not df_logs.empty:
+                # Filter log khusus user ini dan gerakan ini
+                user_logs = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Gerakan"] == gerakan_pilihan)].copy()
+                
+                if not user_logs.empty:
+                    hari_ini_tgl = datetime.date.today()
+                    # Pastikan filter perbandingan tanggal berjalan aman
+                    logs_sesi_lalu = user_logs[user_logs["Tanggal"].dt.date < hari_ini_tgl]
+                    
+                    if not logs_sesi_lalu.empty:
+                        tgl_terakhir = logs_sesi_lalu["Tanggal"].max()
+                        sesi_terakhir = logs_sesi_lalu[logs_sesi_lalu["Tanggal"] == tgl_terakhir]
+                        beban_maks_minggu_lalu = sesi_terakhir["Beban_kg"].max()
+                        beban_dasar_minggu_ini = beban_maks_minggu_lalu + 2.5
+                        info_progres = f"📈 Progres Mingguan: Target beban dasar naik menjadi: **{beban_dasar_minggu_ini}kg** (+2.5kg dari beban tertinggi sesi sebelumnya)."
+                    else:
+                        beban_dasar_minggu_ini = user_logs["Beban_kg"].min()
+                        info_progres = "Melanjutkan sesi latihan hari ini."
 
-        # --- DATA VIEW MONITORING & KALIMAT PENUTUP ---
+            st.markdown(f"💡 *{info_progres}*")
+
+            # --- FORM ENTRI INPUT SET ---
+            with st.form("log_latihan_form"):
+                set_ke = st.number_input("Set Ke-", min_value=1, max_value=6, step=1)
+                rekomendasi_beban = beban_dasar_minggu_ini + ((set_ke - 1) * 2.5)
+                
+                berat = st.number_input("Beban Latihan Realisasi (kg)", min_value=0.0, value=float(rekomendasi_beban), step=2.5)
+                reps = st.number_input("Repetisi Berhasil", min_value=0, step=1)
+                submit_log = st.form_submit_button("💾 Simpan Set Ini")
+                
+                if submit_log:
+                    new_log = pd.DataFrame([{
+                        "Tanggal": pd.to_datetime(datetime.date.today()),
+                        "Username": st.session_state.user_id,
+                        "Gerakan": gerakan_pilihan,
+                        "Set_Ke": int(set_ke),
+                        "Beban_kg": float(berat),
+                        "Reps": int(reps)
+                    }])
+                    df_updated = pd.concat([df_logs, new_log], ignore_index=True)
+                    
+                    if save_data_to_github(df_updated, file_sha):
+                        st.success(f"Set {set_ke} berhasil disimpan secara permanen ke Database Cloud!")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error("Gagal menyimpan ke database Cloud. Cek koneksi internet atau token GitHub Anda.")
+
+        # --- MONITORING CATATAN HARI INI ---
         st.write("---")
         st.subheader("📋 Catatan Latihan Anda Hari Ini")
-        df_hari_ini = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date == datetime.date.today())]
+        
+        df_hari_ini = pd.DataFrame()
+        if not df_logs.empty:
+            df_hari_ini = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date == datetime.date.today())]
         
         if not df_hari_ini.empty:
-            st.dataframe(df_hari_ini[["Gerakan", "Set_Ke", "Beban_kg", "Reps"]], use_container_width=True)
+            st.dataframe(df_hari_ini[["Gerakan", "Set_Ke", "Beban_kg", "Reps"]].reset_index(drop=True), use_container_width=True)
             st.balloons()
-            st.success("""
-            🎉 **YEAY! LATIHAN SELESAI!** 💪 *Nikmati DOMS nya besok.* 🔥 **Jangan menyerah, ayo terus semangat latihannya!**
-            """)
+            st.success("🎉 **YEAY! LATIHAN SELESAI!** 💪 *Nikmati DOMS nya besok.*")
         else:
             st.caption("Belum ada set yang disimpan hari ini.")
 
@@ -383,17 +441,16 @@ else:
     with tab_progress:
         st.subheader("📊 Analisis & Riwayat Progress")
         
-        # Filter log khusus user yang sedang login
-        df_user_all = df_logs[df_logs["Username"] == st.session_state.user_id].copy()
+        df_user_all = pd.DataFrame()
+        if not df_logs.empty:
+            df_user_all = df_logs[df_logs["Username"] == st.session_state.user_id].copy()
         
         if df_user_all.empty:
-            st.info("Belum ada riwayat latihan yang tercatat untuk akun Anda. Silakan isi latihan terlebih dahulu!")
+            st.info("Belum ada riwayat latihan yang tercatat untuk akun Anda.")
         else:
-            # Tambah kolom pembantu untuk waktu
             df_user_all["Bulan"] = df_user_all["Tanggal"].dt.strftime("%Y-%m (%B)")
             df_user_all["Tanggal_Saja"] = df_user_all["Tanggal"].dt.date
             
-            # --- RINGKASAN TOTAL AKUMULASI ---
             total_hari_latihan = df_user_all["Tanggal_Saja"].nunique()
             total_set_diangkat = len(df_user_all)
             
@@ -402,52 +459,37 @@ else:
             col2.metric("🏋️ Total Set Diselesaikan", f"{total_set_diangkat} Set")
             
             st.write("---")
-            
-            # --- FILTER PROGRESS ---
             mode_view = st.radio("Pilih Mode Riwayat:", ["Per Bulan", "Per Hari Spesifik", "Grafik Tren Beban (Overload)"], horizontal=True)
             
             if mode_view == "Per Bulan":
                 st.markdown("### 📅 Riwayat Latihan Bulanan")
                 pilihan_bulan = st.selectbox("Pilih Bulan Latihan:", df_user_all["Bulan"].unique())
-                
                 df_bulanan = df_user_all[df_user_all["Bulan"] == pilihan_bulan]
-                # Mengelompokkan gerakan per bulan
                 df_summary_bulan = df_bulanan.groupby(["Tanggal_Saja", "Gerakan"]).agg(
                     Total_Set=("Set_Ke", "count"),
                     Beban_Maksimal_kg=("Beban_kg", "max"),
                     Reps_Maksimal=("Reps", "max")
                 ).reset_index()
-                
                 df_summary_bulan.columns = ["Tanggal", "Nama Gerakan", "Jumlah Set", "Beban Tertinggi (kg)", "Reps Tertinggi"]
                 st.dataframe(df_summary_bulan.sort_values(by="Tanggal", ascending=False), use_container_width=True)
                 
             elif mode_view == "Per Hari Spesifik":
                 st.markdown("### 📆 Riwayat Detil Harian")
-                # Mengurutkan tanggal terbaru di atas
                 daftar_tanggal = sorted(df_user_all["Tanggal_Saja"].unique(), reverse=True)
                 pilihan_tanggal = st.selectbox("Pilih Tanggal Latihan:", daftar_tanggal)
-                
                 df_harian = df_user_all[df_user_all["Tanggal_Saja"] == pilihan_tanggal]
                 st.dataframe(df_harian[["Gerakan", "Set_Ke", "Beban_kg", "Reps"]].reset_index(drop=True), use_container_width=True)
                 
             elif mode_view == "Grafik Tren Beban (Overload)":
                 st.markdown("### 📈 Grafik Kenaikan Beban (*Progressive Overload*)")
-                st.caption("Gunakan fitur ini untuk melihat apakah beban latihan Anda meningkat dari minggu ke minggu.")
-                
                 daftar_gerakan_user = df_user_all["Gerakan"].unique()
                 gerakan_dipilih = st.selectbox("Pilih Gerakan yang Ingin Dilihat Trennya:", daftar_gerakan_user)
                 
-                # Filter data gerakan tersebut, lalu cari beban maksimum per tanggal latihan
                 df_tren = df_user_all[df_user_all["Gerakan"] == gerakan_dipilih]
                 df_chart = df_tren.groupby("Tanggal_Saja")["Beban_kg"].max().reset_index()
                 df_chart.columns = ["Tanggal", "Beban Maksimal (kg)"]
-                
-                # Set index tanggal agar terbaca dengan baik oleh st.line_chart
                 df_chart = df_chart.set_index("Tanggal")
                 
-                # Tampilkan grafik garis
                 st.line_chart(df_chart, y="Beban Maksimal (kg)")
-                
-                # Tabel pendukung grafik
                 with st.expander("Lihat Angka Detil Kenaikan"):
                     st.dataframe(df_chart.sort_index(ascending=False), use_container_width=True)
