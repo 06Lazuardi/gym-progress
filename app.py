@@ -66,7 +66,7 @@ df_logs, file_sha = load_data_from_github()
 # --- 3. DATABASE USER ---
 if "user_database" not in st.session_state:
     st.session_state.user_database = {
-        "06_Lazuardi": {"password": "superpassword2026", "role": "admin", "nama": "Owner Gym (Ardi)"},
+        "06_Lazuardi": {"password": "superpassword2026", "role": "admin", "nama": "Ardi"},
         "Artha": {"password": "Artha123", "role": "member", "nama": "Juniartha"},
         "Rara": {"password": "Rara123", "role": "member", "nama": "Rara"},
         "Yuni": {"password": "Yuni123", "role": "member", "nama": "Yuni"},
