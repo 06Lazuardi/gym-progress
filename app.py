@@ -189,7 +189,7 @@ if not st.session_state.logged_in:
         password_input = st.text_input("Password", type="password").strip()
         
         # Penambahan opsi "Tetap login di perangkat ini"
-        tetap_login_checkbox = st.checkbox("Tetap login di perangkat ini (Maks. 12 Jam)")
+        tetap_login_checkbox = st.checkbox("Tetap login di perangkat ini")
         
         # Penataan Tombol Masuk & Tombol Lupa Password Berdampingan
         col_btn1, col_btn2 = st.columns([1, 4])
