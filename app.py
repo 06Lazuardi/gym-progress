@@ -177,7 +177,7 @@ if st.session_state.logged_in:
 
 # --- 7. INTERFACE SEBELUM LOGIN & LAMAN RESET PASSWORD ---
 if not st.session_state.logged_in:
-    st.title("🏋️‍♂️ Gym Private Member Portal")
+    st.title("🏋️‍♂️ Private Coaching Gym")
     
     # KONDISI 1: HALAMAN LOGIN UTAMA
     if st.session_state.halaman_akses == "login":
@@ -256,7 +256,7 @@ if not st.session_state.logged_in:
 
 # --- 8. INTERFACE SETELAH LOGIN ---
 else:
-    st.title("🏋️‍♂️ Universal Gym Tracker Portal")
+    st.title("🏋️‍♂️ Private Coaching Portal")
     st.markdown(f"### 🎉 Halo **{st.session_state.user_nama}**")
     st.markdown("##### *Semangat Latihan ya hari ini!* 🔥")
     
