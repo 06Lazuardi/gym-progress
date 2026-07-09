@@ -308,9 +308,6 @@ else:
         jadwal_aktif = None
 
         # --- LOGIKA PENENTUAN JADWAL KHUSUS ---
-            elif nama_hari_indonesia == "Sabtu":
-                pilihan_menu = "Hari 3 – Full Upper Body"
-                jadwal_aktif = st.session_state.jadwal_gym_admin 
             else:
                 pilihan_menu = "Hari 1 – Back + Biceps"
                 jadwal_aktif = st.session_state.jadwal_gym_member_umum
