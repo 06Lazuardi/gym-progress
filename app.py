@@ -62,17 +62,25 @@ def save_to_github(file_path, content_str, sha=None, message="Update data"):
 # Tarik data awal
 df_logs, sha_logs, user_db_github, sha_users = load_data_from_github()
 
+# --- FUNGSI TAMBAHAN: TRACKER HARI ---
+def hitung_hari_latihan(tgl_mulai_str):
+    try:
+        tgl_mulai = datetime.datetime.strptime(tgl_mulai_str, "%Y-%m-%d").date()
+        return (datetime.date.today() - tgl_mulai).days + 1
+    except:
+        return 1
+
 # --- 3. DATABASE USER ---
 if "user_database" not in st.session_state:
     st.session_state.user_database = user_db_github if user_db_github else {
-        "06_Lazuardi": {"password": "superpassword2026", "role": "admin", "nama": "Ardi"},
-        "Artha": {"password": "Artha123", "role": "member", "nama": "Juniartha"},
-        "Rara": {"password": "Rara123", "role": "member", "nama": "Rara"},
-        "Yuni": {"password": "Yuni123", "role": "member", "nama": "Yuni"},
-        "Meli": {"password": "Meli123", "role": "member", "nama": "Meli"},
-        "Yana": {"password": "Yana123", "role": "member", "nama": "Yana"},
-        "Ayu": {"password": "Ayu123", "role": "member", "nama": "Ayu"},
-        "Sefitri": {"password": "Cepi123", "role": "member", "nama": "Sefitri"}
+        "06_Lazuardi": {"password": "superpassword2026", "role": "admin", "nama": "Ardi", "tanggal_mulai": "2026-07-07"},
+        "Artha": {"password": "Artha123", "role": "member", "nama": "Juniartha", "tanggal_mulai": "2026-07-06"},
+        "Rara": {"password": "Rara123", "role": "member", "nama": "Rara", "tanggal_mulai": "2026-07-06"},
+        "Yuni": {"password": "Yuni123", "role": "member", "nama": "Yuni", "tanggal_mulai": "2026-07-07"},
+        "Meli": {"password": "Meli123", "role": "member", "nama": "Meli", "tanggal_mulai": "2026-07-07"},
+        "Yana": {"password": "Yana123", "role": "member", "nama": "Yana", "tanggal_mulai": "2026-07-07"},
+        "Ayu": {"password": "Ayu123", "role": "member", "nama": "Ayu", "tanggal_mulai": "2026-07-07"},
+        "Sefitri": {"password": "Cepi123", "role": "member", "nama": "Sefitri", "tanggal_mulai": "2026-07-07"}
     }
 def sync_users():
     content = json.dumps(st.session_state.user_database, indent=4)
@@ -88,45 +96,6 @@ if "halaman_akses" not in st.session_state:
 
 # --- 4. DATABASE REKOMENDASI GERAKAN ALTERNATIF (SISTEM) ---
 KAMUS_GERAKAN_ALTERNATIF = {
-    "Barbell Bench Press": ["Dumbbell Bench Press", "Smith Machine Bench Press", "Chest Press Machine"],
-    "Incline Dumbbell Press": ["Incline Barbell Press", "Incline Smith Machine Press", "Incline Chest Press Machine"],
-    "Chest Press Machine": ["Hammer Strength Chest Press", "Push Up (Weighted)", "Floor Press"],
-    "Cable Fly": ["Pec Deck Fly", "Dumbbell Fly", "Low-to-High Cable Fly"],
-    "Pec Deck Fly": ["Cable Fly", "Dumbbell Fly"],
-    "Pull Up / Lat Pulldown": ["Assisted Pull Up", "Wide Grip Lat Pulldown", "Close Grip Lat Pulldown"],
-    "Barbell Row": ["Pendlay Row", "T-Bar Row", "Smith Machine Row"],
-    "Seated Cable Row": ["Chest Supported Row", "Dumbbell Row", "Machine Row"],
-    "Straight Arm Pulldown": ["Cable Pullover", "Dumbbell Pullover"],
-    "Single Arm Dumbbell Row": ["Single Arm Cable Row", "Meadows Row"],
-    "Chest Supported Row": ["Seated Cable Row", "T-Bar Row"],
-    "Face Pull": ["Rear Delt Fly Machine", "Bent Over Dumbbell Lateral Raise", "Rope Face Pull (High Custom)"],
-    "Dumbbell Shoulder Press": ["Military Press Barbell", "Smith Machine Shoulder Press", "Machine Shoulder Press"],
-    "Lateral Raise": ["Cable Lateral Raise", "Machine Lateral Raise", "Dumbbell Lean-Away Lateral Raise"],
-    "Rear Delt Fly": ["Face Pull", "Reverse Pec Deck"],
-    "Rope Pushdown": ["Straight Bar Pushdown", "V-Bar Pushdown", "Triceps Pushdown Machine"],
-    "Overhead Cable Triceps Extension": ["Overhead Dumbbell Extension", "Skull Crusher", "EZ Bar Overhead Extension"],
-    "Close Grip Bench Press": ["Dips", "Diamond Push Up", "Close Grip Smith Machine Press"],
-    "Overhead Dumbbell Triceps Extension": ["Overhead Cable Triceps Extension", "Skull Crusher"],
-    "EZ Bar Curl": ["Barbell Curl", "Cable Curl", "Spider Curl"],
-    "Incline Dumbbell Curl": ["Dumbbell Biceps Curl", "Preacher Curl", "Concentration Curl"],
-    "Hammer Curl": ["Cable Hammer Curl", "Rope Hammer Curl", "Dumbbell Cross Body Hammer Curl"],
-    "Barbell Curl": ["EZ Bar Curl", "Dumbbell Curl", "Cable Curl"],
-    "Preacher Curl": ["Machine Preacher Curl", "Incline Dumbbell Curl"],
-    "Cable Curl": ["EZ Bar Biceps Curl", "Dumbbell Curl"],
-    "Back Squat": ["Safety Bar Squat", "Hack Squat", "Smith Machine Squat", "Goblet Squat"],
-    "Front Squat": ["Goblet Squat", "Zercher Squat", "Leg Press (High Stance)"],
-    "Leg Press": ["Hack Squat", "V-Squat Machine", "Pendulum Squat"],
-    "Leg Extension": ["Sissy Squat", "Bodyweight Leg Extension"],
-    "Romanian Deadlift": ["Dumbbell RDL", "Smith Machine RDL", "Good Morning"],
-    "Bulgarian Split Squat": ["Dumbbell Lunges", "Deficit Reverse Lunges", "Smith Machine Split Squat"],
-    "Walking Lunges": ["Reverse Lunges", "Stationary Lunges", "Step Up"],
-    "Leg Curl": ["Seated Leg Curl", "Lying Leg Curl Machine", "Nordic Hamstring Curl"],
-    "Seated Leg Curl": ["Lying Leg Curl", "Romanian Deadlift"],
-    "Hip Thrust": ["Glute Bridge", "Smith Machine Hip Thrust", "Kabel Pull-Through"],
-    "Standing Calf Raise": ["Leg Press Calf Press", "Smith Machine Calf Raise"],
-    "Seated Calf Raise": ["Standing Calf Raise", "Donkey Calf Raise"],
-    "Hanging Leg Raise": ["Captain's Chair Leg Raise", "Lying Leg Raise", "V-Ups"],
-    "Hanging Leg Raise / Cable Crunch": ["Cable Crunch", "Hanging Leg Raise", "Ab Wheel Rollout"]
 }
 
 KAMUS_INDUK = {v: induk for induk, variasi_list in KAMUS_GERAKAN_ALTERNATIF.items() for v in variasi_list}
@@ -261,6 +230,13 @@ if not st.session_state.logged_in:
 else:
     st.title("🏋️‍♂️ Aplikasi Gymnya Anak SC")
     st.markdown(f"### 🎉 Halo **{st.session_state.user_nama}**")
+    
+    # [FITUR TAMBAHAN]: Menampilkan Hari ke-berapa
+    user_info = st.session_state.user_database.get(st.session_state.user_id, {})
+    tgl_mulai_user = user_info.get("tanggal_mulai", "2026-07-06")
+    hari_ke = hitung_hari_latihan(tgl_mulai_user)
+    st.info(f"📍 Anda saat ini berada di **Hari ke-{hari_ke}** latihan Anda.")
+    
     st.markdown("##### *Semangat Latihan ya hari ini!* 🔥")
         
     st.write("---")
@@ -322,28 +298,47 @@ else:
         st.subheader(f"📆 Hari Ini: {nama_hari_indonesia}")
 
         is_rest_day = False
-        if nama_hari_indonesia == "Selasa":
-            hari_rara = "Hari 2 – Back + Biceps"; hari_admin = "Hari 2 – Back + Biceps"; hari_member_umum = "Hari 1 – Back + Biceps"
-        elif nama_hari_indonesia == "Rabu":
-            hari_rara = "Hari 3 – Leg"; hari_admin = "REST"; hari_member_umum = "Hari 2 – Chest + Triceps"
-            if st.session_state.user_role == "admin": 
+        pilihan_menu = None
+        jadwal_aktif = None
+
+        # --- LOGIKA PENENTUAN JADWAL KHUSUS ---
+        if st.session_state.user_id == "Artha":
+            if nama_hari_indonesia == "Kamis":
                 is_rest_day = True
+            elif nama_hari_indonesia == "Sabtu":
+                pilihan_menu = "Hari 3 – Full Upper Body"
+                jadwal_aktif = st.session_state.jadwal_gym_admin 
+            else:
+                # Logika umum Artha di hari lain
+                pilihan_menu = "Hari 1 – Back + Biceps"
+                jadwal_aktif = st.session_state.jadwal_gym_member_umum
+        
         else:
-            hari_rara = "Hari 1 – Chest + Leg + Triceps"; hari_admin = "Hari 1 – Chest + Triceps"; hari_member_umum = "Hari 2 – Chest + Triceps"
+            # --- LOGIKA MEMBER LAIN ---
+            if nama_hari_indonesia == "Selasa":
+                hari_rara = "Hari 2 – Back + Biceps"; hari_admin = "Hari 2 – Back + Biceps"; hari_member_umum = "Hari 1 – Back + Biceps"
+            elif nama_hari_indonesia == "Rabu":
+                hari_rara = "Hari 3 – Leg"; hari_admin = "REST"; hari_member_umum = "Hari 2 – Chest + Triceps"
+                if st.session_state.user_role == "admin": 
+                    is_rest_day = True
+            else:
+                hari_rara = "Hari 1 – Chest + Leg + Triceps"; hari_admin = "Hari 1 – Chest + Triceps"; hari_member_umum = "Hari 2 – Chest + Triceps"
+
+            if not is_rest_day:
+                if st.session_state.user_id == "Rara":
+                    jadwal_aktif = st.session_state.jadwal_gym_rara
+                    pilihan_menu = hari_rara
+                elif st.session_state.user_role == "admin":
+                    jadwal_aktif = st.session_state.jadwal_gym_admin
+                    pilihan_menu = hari_admin
+                else:
+                    jadwal_aktif = st.session_state.jadwal_gym_member_umum
+                    pilihan_menu = hari_member_umum
 
         if is_rest_day:
             st.success("🧘‍♂️ Hari ini jadwalnya **REST/Istirahat**! Pulihkan otot Anda dengan baik.")
         else:
-            if st.session_state.user_id == "Rara":
-                jadwal_aktif = st.session_state.jadwal_gym_rara
-                pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_rara], disabled=True)
-            elif st.session_state.user_role == "admin":
-                jadwal_aktif = st.session_state.jadwal_gym_admin
-                pilihan_menu = st.selectbox("Jadwal Latihan Admin Hari Ini:", [hari_admin], disabled=True)
-            else:
-                jadwal_aktif = st.session_state.jadwal_gym_member_umum
-                pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", [hari_member_umum], disabled=True)
-
+            st.selectbox("Jadwal Latihan Anda Hari Ini:", [pilihan_menu], disabled=True)
             daftar_gerakan_default = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
             
             variasi_minggu_lalu = {}
@@ -410,15 +405,15 @@ else:
                         else: 
                             st.error("Gagal menyimpan ke database cloud.")
 
-        st.write("---")
-        st.subheader("📋 Catatan Latihan Anda Hari Ini")
-        df_hari_ini = pd.DataFrame()
-        if not df_logs.empty:
-            df_hari_ini = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date == datetime.date.today())]
-        if not df_hari_ini.empty:
-            st.dataframe(df_hari_ini[["Gerakan", "Set_Ke", "Beban_kg", "Reps"]].reset_index(drop=True), use_container_width=True)
-        else: 
-            st.caption("Belum ada set yang disimpan hari ini.")
+            st.write("---")
+            st.subheader("📋 Catatan Latihan Anda Hari Ini")
+            df_hari_ini = pd.DataFrame()
+            if not df_logs.empty:
+                df_hari_ini = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date == datetime.date.today())]
+            if not df_hari_ini.empty:
+                st.dataframe(df_hari_ini[["Gerakan", "Set_Ke", "Beban_kg", "Reps"]].reset_index(drop=True), use_container_width=True)
+            else: 
+                st.caption("Belum ada set yang disimpan hari ini.")
 
     # ==================== TAB 2: PROGRESS LATIHAN ====================
     with tab_progress:
