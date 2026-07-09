@@ -291,131 +291,67 @@ else:
 
     tab_input, tab_progress = st.tabs(["🏋️ Latihan Hari Ini", "📊 Progress Latihan"])
 
-  # ==================== TAB 1: INPUT LATIHAN ====================
+ # ==================== TAB 1: INPUT LATIHAN ====================
     with tab_input:
-        # [MODIFIKASI: Logika Hari Ke-n & Siklus 5 Hari]
+        # [LOGIKA TRACKER HARI]
         user_info = st.session_state.user_database.get(st.session_state.user_id, {})
         hari_ke = hitung_hari_latihan(user_info.get("tanggal_mulai", "2026-07-06"))
         idx_jadwal_dinamis = (hari_ke - 1) % 5
         
-        
-        hari_index = datetime.datetime.now().weekday()
-        nama_hari_indonesia = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][hari_index]
-        st.subheader(f"📆 Hari Ini: {nama_hari_indonesia}")
+        st.info(f"📍 Anda saat ini berada di **Hari ke-{hari_ke}**.")
+        st.subheader("📆 Latihan Hari Ini")
 
-        is_rest_day = False
-        pilihan_menu = None
-        jadwal_aktif = None
-        
-# --- LOGIKA PENENTUAN JADWAL KHUSUS ---
-        if st.session_state.user_id == "Artha":
-            if nama_hari_indonesia == "Kamis":
-                is_rest_day = False
-            elif nama_hari_indonesia == "Sabtu":
-                pilihan_menu = "Hari 3 – Full Upper Body"
-                jadwal_aktif = st.session_state.jadwal_gym_admin 
-                
- # --- LOGIKA MEMBER LAIN ---
-            if nama_hari_indonesia == "Selasa":
-                hari_rara = "Hari 2 – Back + Biceps"; hari_admin = "Hari 2 – Back + Biceps"; hari_member_umum = "Hari 1 – Back + Biceps"
-            elif nama_hari_indonesia == "Rabu":
-                hari_rara = "Hari 3 – Leg"; hari_admin = "REST"; hari_member_umum = "Hari 2 – Chest + Triceps"
-                if st.session_state.user_role == "admin": 
-                    is_rest_day = True
-            else:
-                hari_rara = "Hari 1 – Chest + Leg + Triceps"; hari_admin = "Hari 1 – Chest + Triceps"; hari_member_umum = "Hari 2 – Chest + Triceps"
-
-            if not is_rest_day:
-                if st.session_state.user_id == "Rara":
-                    jadwal_aktif = st.session_state.jadwal_gym_rara
-                    pilihan_menu = hari_rara
-                elif st.session_state.user_role == "admin":
-                    jadwal_aktif = st.session_state.jadwal_gym_admin
-                    pilihan_menu = hari_admin
-                else:
-                    jadwal_aktif = st.session_state.jadwal_gym_member_umum
-                    pilihan_menu = hari_member_umum
+        # [REVISI: Opsi Rest Manual oleh User]
+        is_rest_day = st.checkbox("🧘‍♂️ Saya ingin mengambil hari istirahat (Rest Day) hari ini", value=False)
 
         if is_rest_day:
-            st.success("🧘‍♂️ Hari ini jadwalnya **REST/Istirahat**! Pulihkan otot Anda dengan baik.")
+            st.success("Hari ini Anda memilih untuk beristirahat. Pulihkan otot Anda dengan baik!")
         else:
- # [MODIFIKASI: Menggunakan index dinamis]
-            pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", list(jadwal_aktif.keys()), index=idx_jadwal_dinamis)
-            daftar_gerakan_default = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
+            # --- PENENTUAN JADWAL (Hanya jalan jika bukan Rest Day) ---
+            if st.session_state.user_id == "Rara":
+                jadwal_aktif = st.session_state.jadwal_gym_rara
+            elif st.session_state.user_role == "admin":
+                jadwal_aktif = st.session_state.jadwal_gym_admin
+            else:
+                jadwal_aktif = st.session_state.jadwal_gym_member_umum
             
-            variasi_minggu_lalu = {}
-            if not df_logs.empty:
-                tgl_7_hari_lalu = datetime.date.today() - datetime.timedelta(days=7)
-                df_minggu_lalu = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date >= tgl_7_hari_lalu) & (df_logs["Tanggal"].dt.date < datetime.date.today())]
-                if not df_minggu_lalu.empty:
-                    for g in df_minggu_lalu["Gerakan"].unique():
-                        if g in KAMUS_INDUK: 
-                            variasi_minggu_lalu[KAMUS_INDUK[g]] = g
-
-            gerakan_utama_dipilih = st.selectbox("Pilih Slot Gerakan Utama:", daftar_gerakan_default)
-            target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_utama_dipilih)
-
-            gerakan_pilihan_final = gerakan_utama_dipilih
-            opsi_rekomendasi_sistem = KAMUS_GERAKAN_ALTERNATIF.get(gerakan_utama_dipilih, [])
-            ada_variasi_minggu_lalu = gerakan_utama_dipilih in variasi_minggu_lalu
-            
-            if opsi_rekomendasi_sistem:
-                label_checkbox = "🔄 Gunakan Rekomendasi Gerakan Alternatif"
-                if ada_variasi_minggu_lalu: 
-                    label_checkbox += " *(Otomatis aktif dari minggu lalu)*"
-                gunain_variasi = st.checkbox(label_checkbox, value=ada_variasi_minggu_lalu)
-                if gunain_variasi:
-                    var_default = variasi_minggu_lalu.get(gerakan_utama_dipilih, opsi_rekomendasi_sistem[0])
-                    idx_default = opsi_rekomendasi_sistem.index(var_default) if var_default in opsi_rekomendasi_sistem else 0
-                    gerakan_pilihan_final = st.selectbox("Rekomendasi Alternatif (Target Otot Sama):", opsi_rekomendasi_sistem, index=idx_default)
-                    target_bawaan = f"{target_bawaan.split(' ')[0]} × 10-12 (Variasi)"
-
-            st.success(f"🎯 Gerakan Aktif: **{gerakan_pilihan_final}** | Target Panduan: **{target_bawaan}**")
-
-            beban_set_sebelumnya_hari_ini = 0.0
-            set_terakhir_tersimpan = 0
-            if not df_logs.empty:
-                df_hari_ini_user = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date == datetime.date.today()) & (df_logs["Gerakan"] == gerakan_pilihan_final)]
-                if not df_hari_ini_user.empty:
-                    set_terakhir_tersimpan = df_hari_ini_user["Set_Ke"].max()
-                    beban_set_sebelumnya_hari_ini = df_hari_ini_user[df_hari_ini_user["Set_Ke"] == set_terakhir_tersimpan]["Beban_kg"].values[0]
-
-            set_berikutnya = set_terakhir_tersimpan + 1
-
-            with st.form("log_latihan_form"):
-                st.markdown(f"#### 📝 Mengisi Data **Set Ke-{set_berikutnya}**")
-                if set_berikutnya == 1:
-                    st.caption("💡 Ini adalah Set Pertama Anda hari ini. Tentukan berat awal bebas.")
-                    berat = st.number_input("Beban Latihan Realisasi (kg)", min_value=0.0, value=10.0, step=2.5)
-                else:
-                    st.warning(f"⚠️ **Overload Aktif**: Set {set_berikutnya} **WAJIB LEBIH BESAR** dari Set {set_terakhir_tersimpan} ({beban_set_sebelumnya_hari_ini} kg)!")
-                    berat = st.number_input(f"Beban Latihan (Minimal {beban_set_sebelumnya_hari_ini + 2.5} kg)", min_value=0.0, value=float(beban_set_sebelumnya_hari_ini + 2.5), step=2.5)
+            # --- VALIDASI AMAN: Mencegah Error 'NoneType' ---
+            if jadwal_aktif and isinstance(jadwal_aktif, dict) and len(jadwal_aktif) > 0:
+                kunci_jadwal = list(jadwal_aktif.keys())
+                idx_aman = idx_jadwal_dinamis % len(kunci_jadwal)
                 
-                reps = st.number_input("Repetisi Berhasil", min_value=1, value=10, step=1)
-                submit_log = st.form_submit_button(f"💾 Simpan Set {set_berikutnya}")
+                pilihan_menu = st.selectbox("Jadwal Latihan Anda:", kunci_jadwal, index=idx_aman)
+                daftar_gerakan_default = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
                 
-                if submit_log:
-                    if set_berikutnya > 1 and berat <= beban_set_sebelumnya_hari_ini:
-                        st.error(f"❌ Gagal! Beban wajib naik dibandingkan set sebelumnya ({beban_set_sebelumnya_hari_ini} kg)!")
-                    else:
-                        new_log = pd.DataFrame([{"Tanggal": pd.to_datetime(datetime.date.today()), "Username": st.session_state.user_id, "Gerakan": gerakan_pilihan_final, "Set_Ke": int(set_berikutnya), "Beban_kg": float(berat), "Reps": int(reps)}])
-                        df_updated = pd.concat([df_logs, new_log], ignore_index=True)
-                        if save_to_github(LOG_FILE, df_updated.to_csv(index=False), sha=sha_logs, message="Update workout logs"):
-                            st.success(f"Set {set_berikutnya} disimpan!")
-                            st.cache_data.clear()
-                            st.rerun()
-                        else: 
-                            st.error("Gagal menyimpan ke database cloud.")
+                # --- LANJUTAN LOGIKA GERAKAN (Sesuai kode asli Anda) ---
+                variasi_minggu_lalu = {}
+                if not df_logs.empty:
+                    tgl_7_hari_lalu = datetime.date.today() - datetime.timedelta(days=7)
+                    df_minggu_lalu = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date >= tgl_7_hari_lalu) & (df_logs["Tanggal"].dt.date < datetime.date.today())]
+                    if not df_minggu_lalu.empty:
+                        for g in df_minggu_lalu["Gerakan"].unique():
+                            if g in KAMUS_INDUK: 
+                                variasi_minggu_lalu[KAMUS_INDUK[g]] = g
 
-            st.write("---")
-            st.subheader("📋 Catatan Latihan Anda Hari Ini")
-            df_hari_ini = pd.DataFrame()
-            if not df_logs.empty:
-                df_hari_ini = df_logs[(df_logs["Username"] == st.session_state.user_id) & (df_logs["Tanggal"].dt.date == datetime.date.today())]
-            if not df_hari_ini.empty:
-                st.dataframe(df_hari_ini[["Gerakan", "Set_Ke", "Beban_kg", "Reps"]].reset_index(drop=True), use_container_width=True)
-            else: 
-                st.caption("Belum ada set yang disimpan hari ini.")
+                gerakan_utama_dipilih = st.selectbox("Pilih Slot Gerakan Utama:", daftar_gerakan_default)
+                target_bawaan = next(g["target"] for g in jadwal_aktif[pilihan_menu] if g["nama"] == gerakan_utama_dipilih)
+
+                gerakan_pilihan_final = gerakan_utama_dipilih
+                opsi_rekomendasi_sistem = KAMUS_GERAKAN_ALTERNATIF.get(gerakan_utama_dipilih, [])
+                ada_variasi_minggu_lalu = gerakan_utama_dipilih in variasi_minggu_lalu
+                
+                if opsi_rekomendasi_sistem:
+                    label_checkbox = "🔄 Gunakan Rekomendasi Gerakan Alternatif"
+                    if ada_variasi_minggu_lalu: 
+                        label_checkbox += " *(Otomatis aktif dari minggu lalu)*"
+                    gunain_variasi = st.checkbox(label_checkbox, value=ada_variasi_minggu_lalu)
+                    if gunain_variasi:
+                        var_default = variasi_minggu_lalu.get(gerakan_utama_dipilih, opsi_rekomendasi_sistem[0])
+                        idx_default = opsi_rekomendasi_sistem.index(var_default) if var_default in opsi_rekomendasi_sistem else 0
+                        gerakan_pilihan_final = st.selectbox("Rekomendasi Alternatif (Target Otot Sama):", opsi_rekomendasi_sistem, index=idx_default)
+                        target_bawaan = f"{target_bawaan.split(' ')[0]} × 10-12 (Variasi)"
+
+                st.success(f"🎯 Gerakan Aktif: **{gerakan_pilihan_final}** | Target Panduan: **{target_bawaan}**")
 
     # ==================== TAB 2: PROGRESS LATIHAN ====================
     with tab_progress:
