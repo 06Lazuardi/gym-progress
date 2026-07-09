@@ -306,7 +306,15 @@ else:
         is_rest_day = False
         pilihan_menu = None
         jadwal_aktif = None
-
+        
+# --- LOGIKA PENENTUAN JADWAL KHUSUS ---
+        if st.session_state.user_id == "Artha":
+            if nama_hari_indonesia == "Kamis":
+                is_rest_day = False
+            elif nama_hari_indonesia == "Sabtu":
+                pilihan_menu = "Hari 3 – Full Upper Body"
+                jadwal_aktif = st.session_state.jadwal_gym_admin 
+                
  # --- LOGIKA MEMBER LAIN ---
             if nama_hari_indonesia == "Selasa":
                 hari_rara = "Hari 2 – Back + Biceps"; hari_admin = "Hari 2 – Back + Biceps"; hari_member_umum = "Hari 1 – Back + Biceps"
