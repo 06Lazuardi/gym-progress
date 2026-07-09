@@ -96,9 +96,49 @@ if "halaman_akses" not in st.session_state:
 
 # --- 4. DATABASE REKOMENDASI GERAKAN ALTERNATIF (SISTEM) ---
 KAMUS_GERAKAN_ALTERNATIF = {
+    # BACK (Punggung)
+    "Pull Up": ["Chin Up", "Assisted Pull Up", "Lat Pulldown"],
+    "Lat Pulldown": ["Close Grip Lat Pulldown", "Reverse Grip Lat Pulldown", "Straight Arm Pulldown"],
+    "Barbell Row": ["Pendlay Row", "T-Bar Row", "Chest Supported Row", "Machine Row"],
+    "Seated Cable Row": ["Chest Supported Row", "Machine Row", "Inverted Row"],
+    "Single Arm Dumbbell Row": ["Dumbbell Row", "Meadows Row"],
+    "Face Pull": ["Reverse Pec Deck", "Rear Delt Fly", "Cable Rear Delt Fly"],
+    "Barbell Shrug": ["Dumbbell Shrug", "Machine Shrug"],
+
+    # CHEST (Dada)
+    "Barbell Bench Press": ["Dumbbell Bench Press", "Smith Machine Bench Press", "Chest Press Machine"],
+    "Incline Barbell Bench Press": ["Incline Dumbbell Bench Press", "Incline Chest Press Machine"],
+    "Cable Fly": ["High to Low Cable Fly", "Low to High Cable Fly", "Pec Deck Fly", "Dumbbell Fly"],
+    "Push Up": ["Incline Push Up", "Decline Push Up", "Diamond Push Up"],
+    "Dips": ["Bench Dip", "Parallel Bar Dip"],
+
+    # CORE (Perut)
+    "Cable Crunch": ["Crunch", "Reverse Crunch", "Decline Sit Up"],
+    "Hanging Leg Raise": ["Hanging Knee Raise", "Toes to Bar"],
+    "Plank": ["Side Plank", "Ab Wheel Rollout"],
+    "Russian Twist": ["Bicycle Crunch", "Mountain Climber", "Cable Wood Chop"],
+    "Dead Bug": ["Bird Dog", "Pallof Press"],
+
+    # ARMS (Lengan)
+    "Barbell Curl": ["EZ Bar Curl", "Dumbbell Curl", "Cable Curl", "Preacher Curl"],
+    "Hammer Curl": ["Cross Body Hammer Curl", "Reverse Curl"],
+    "Rope Pushdown": ["Straight Bar Pushdown", "V-Bar Pushdown", "Single Arm Cable Pushdown"],
+    "Overhead Cable Extension": ["Overhead Dumbbell Extension", "Skull Crusher"],
+    "Close Grip Bench Press": ["JM Press", "Bench Dip"],
+
+    # LOWER BODY (Kaki)
+    "Back Squat": ["Front Squat", "Hack Squat", "Goblet Squat", "Smith Squat"],
+    "Leg Press": ["Sumo Squat", "Hack Squat"],
+    "Bulgarian Split Squat": ["Walking Lunges", "Reverse Lunges", "Forward Lunges", "Step Up"],
+    "Romanian Deadlift (RDL)": ["Conventional Deadlift", "Stiff Leg Deadlift", "Sumo Deadlift"],
+    "Lying Leg Curl": ["Seated Leg Curl", "Nordic Curl", "Glute Ham Raise"],
+    "Hip Thrust": ["Glute Bridge", "Cable Kickback"],
+    "Standing Calf Raise": ["Seated Calf Raise", "Donkey Calf Raise", "Leg Press Calf Raise", "Single Leg Calf Raise"]
 }
 
+# Mapping otomatis untuk sistem pencarian progress
 KAMUS_INDUK = {v: induk for induk, variasi_list in KAMUS_GERAKAN_ALTERNATIF.items() for v in variasi_list}
+
 
 # --- 5. INITIALIZE JADWAL GYM ---
 if "jadwal_gym_admin" not in st.session_state:
