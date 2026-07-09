@@ -291,8 +291,15 @@ else:
 
     tab_input, tab_progress = st.tabs(["🏋️ Latihan Hari Ini", "📊 Progress Latihan"])
 
-    # ==================== TAB 1: INPUT LATIHAN ====================
+  # ==================== TAB 1: INPUT LATIHAN ====================
     with tab_input:
+        # [MODIFIKASI: Logika Hari Ke-n & Siklus 5 Hari]
+        user_info = st.session_state.user_database.get(st.session_state.user_id, {})
+        hari_ke = hitung_hari_latihan(user_info.get("tanggal_mulai", "2026-07-06"))
+        idx_jadwal_dinamis = (hari_ke - 1) % 5
+        
+        st.info(f"📍 Anda saat ini berada di **Hari ke-{hari_ke}**.")
+        
         hari_index = datetime.datetime.now().weekday()
         nama_hari_indonesia = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][hari_index]
         st.subheader(f"📆 Hari Ini: {nama_hari_indonesia}")
@@ -309,7 +316,6 @@ else:
                 pilihan_menu = "Hari 3 – Full Upper Body"
                 jadwal_aktif = st.session_state.jadwal_gym_admin 
             else:
-                # Logika umum Artha di hari lain
                 pilihan_menu = "Hari 1 – Back + Biceps"
                 jadwal_aktif = st.session_state.jadwal_gym_member_umum
         
@@ -338,7 +344,8 @@ else:
         if is_rest_day:
             st.success("🧘‍♂️ Hari ini jadwalnya **REST/Istirahat**! Pulihkan otot Anda dengan baik.")
         else:
-            st.selectbox("Jadwal Latihan Anda Hari Ini:", [pilihan_menu], disabled=False)
+            # [MODIFIKASI: Menggunakan index dinamis]
+            pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", list(jadwal_aktif.keys()), index=idx_jadwal_dinamis)
             daftar_gerakan_default = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
             
             variasi_minggu_lalu = {}
