@@ -342,7 +342,7 @@ else:
         st.subheader("📆 Latihan Hari Ini")
 
         # [REVISI: Opsi Rest Manual oleh User]
-        is_rest_day = st.checkbox("🧘‍♂️ Saya ingin mengambil hari istirahat (Rest Day) hari ini", value=False)
+        is_rest_day = st.checkbox("🧘‍♂️ Rest Dulu bray", value=False)
 
         if is_rest_day:
             st.success("Hari ini Anda memilih untuk beristirahat. Pulihkan otot Anda dengan baik!")
