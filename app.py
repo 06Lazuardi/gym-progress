@@ -339,7 +339,7 @@ else:
         if is_rest_day:
             st.success("🧘‍♂️ Hari ini jadwalnya **REST/Istirahat**! Pulihkan otot Anda dengan baik.")
         else:
-            # [MODIFIKASI: Menggunakan index dinamis]
+ # [MODIFIKASI: Menggunakan index dinamis]
             pilihan_menu = st.selectbox("Jadwal Latihan Anda Hari Ini:", list(jadwal_aktif.keys()), index=idx_jadwal_dinamis)
             daftar_gerakan_default = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
             
