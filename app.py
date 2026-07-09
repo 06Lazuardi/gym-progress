@@ -307,13 +307,7 @@ else:
         pilihan_menu = None
         jadwal_aktif = None
 
-        # --- LOGIKA PENENTUAN JADWAL KHUSUS ---
-            else:
-                pilihan_menu = "Hari 1 – Back + Biceps"
-                jadwal_aktif = st.session_state.jadwal_gym_member_umum
-        
-        else:
-            # --- LOGIKA MEMBER LAIN ---
+ # --- LOGIKA MEMBER LAIN ---
             if nama_hari_indonesia == "Selasa":
                 hari_rara = "Hari 2 – Back + Biceps"; hari_admin = "Hari 2 – Back + Biceps"; hari_member_umum = "Hari 1 – Back + Biceps"
             elif nama_hari_indonesia == "Rabu":
