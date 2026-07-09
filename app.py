@@ -185,7 +185,7 @@ if st.session_state.logged_in:
         st.session_state.user_role = None
         st.session_state.user_nama = None
         st.session_state.login_timestamp = None
-        st.warning("⚠️ Sesi login 12 jam Anda telah berakhir demi keamanan. Silakan masuk kembali.")
+        st.warning("⚠️ Sesi login 12 jam Anda telah berakhir. Silakan masuk kembali.")
 
 # --- 7. INTERFACE SEBELUM LOGIN & LAMAN RESET PASSWORD ---
 if not st.session_state.logged_in:
@@ -338,7 +338,6 @@ else:
         hari_ke = hitung_hari_latihan(user_info.get("tanggal_mulai", "2026-07-06"))
         idx_jadwal_dinamis = (hari_ke - 1) % 5
         
-        st.info(f"📍 Anda saat ini berada di **Hari ke-{hari_ke}**.")
         st.subheader("📆 Latihan Hari Ini")
 
         # [REVISI: Opsi Rest Manual oleh User]
