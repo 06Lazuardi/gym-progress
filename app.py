@@ -298,7 +298,6 @@ else:
         hari_ke = hitung_hari_latihan(user_info.get("tanggal_mulai", "2026-07-06"))
         idx_jadwal_dinamis = (hari_ke - 1) % 5
         
-        st.info(f"📍 Anda saat ini berada di **Hari ke-{hari_ke}**.")
         
         hari_index = datetime.datetime.now().weekday()
         nama_hari_indonesia = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][hari_index]
