@@ -403,7 +403,7 @@ else:
                     else:
                         new_log = pd.DataFrame([{"Tanggal": pd.to_datetime(datetime.date.today()), "Username": st.session_state.user_id, "Gerakan": gerakan_pilihan_final, "Set_Ke": int(set_berikutnya), "Beban_kg": float(berat), "Reps": int(reps)}])
                         df_updated = pd.concat([df_logs, new_log], ignore_index=True)
-                        if save_to_github(LOG_FILE, df_updated.to_csv(index=False), sha=file_sha, message="Update workout logs"):
+                        if save_to_github(LOG_FILE, df_updated.to_csv(index=False), sha=sha_logs, message="Update workout logs"):
                             st.success(f"Set {set_berikutnya} disimpan!")
                             st.cache_data.clear()
                             st.rerun()
