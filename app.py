@@ -338,7 +338,7 @@ else:
         if is_rest_day:
             st.success("🧘‍♂️ Hari ini jadwalnya **REST/Istirahat**! Pulihkan otot Anda dengan baik.")
         else:
-            st.selectbox("Jadwal Latihan Anda Hari Ini:", [pilihan_menu], disabled=True)
+            st.selectbox("Jadwal Latihan Anda Hari Ini:", [pilihan_menu], disabled=False)
             daftar_gerakan_default = [g["nama"] for g in jadwal_aktif[pilihan_menu]]
             
             variasi_minggu_lalu = {}
