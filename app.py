@@ -235,7 +235,6 @@ else:
     user_info = st.session_state.user_database.get(st.session_state.user_id, {})
     tgl_mulai_user = user_info.get("tanggal_mulai", "2026-07-06")
     hari_ke = hitung_hari_latihan(tgl_mulai_user)
-    st.info(f"📍 Anda saat ini berada di **Hari ke-{hari_ke}** latihan Anda.")
     
     st.markdown("##### *Semangat Latihan ya hari ini!* 🔥")
         
