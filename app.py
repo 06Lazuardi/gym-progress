@@ -155,7 +155,7 @@ if "jadwal_gym_rara" not in st.session_state:
         "Hari 2 – Back + Biceps": [{"nama": "Pull Up / Lat Pulldown", "target": "4 × 10"}, {"nama": "Barbell Row", "target": "4 × 8"}, {"nama": "Seated Cable Row", "target": "3 × 10"}, {"nama": "Face Pull", "target": "3 × 15"}, {"nama": "EZ Bar Curl", "target": "3 × 10"}, {"nama": "Hammer Curl", "target": "3 × 12"}],
         "Hari 3 – Leg": [{"nama": "Hack Squat", "target": "4 × 10"}, {"nama": "Stiff Leg Deadlift", "target": "4 × 8"}, {"nama": "Goblet Squat", "target": "3 × 12"}, {"nama": "Leg Extension", "target": "3 × 15"}, {"nama": "Glute Bridge", "target": "3 × 12"}, {"nama": "Seated Calf Raise", "target": "4 × 20"}],
         "Hari 4 – Upper Body + Arms": [{"nama": "Incline Smith Machine Press", "target": "4 × 10"}, {"nama": "Chest Supported Row", "target": "4 × 10"}, {"nama": "Dumbbell Shoulder Press", "target": "3 × 10"}, {"nama": "Rear Delt Fly", "target": "3 × 15"}, {"nama": "Close Grip Bench Press", "target": "4 × 10"}, {"nama": "Rope Pushdown", "target": "3 × 15"}],
-        "Hari 5 – Full Lower Body": Full Lower Body": [{"nama": "Back Squat", "target": "4 × 8"}, {"nama": "Romanian Deadlift", "target": "4 × 8"}, {"nama": "Leg Press", "target": "3 × 12"}, {"nama": "Walking Lunges", "target": "3 × 12/kaki"}, {"nama": "Leg Extension", "target": "3 × 15"}, {"nama": "Hip Thrust", "target": "4 × 10"}]
+        "Hari 5 – Full Lower Body": [{"nama": "Back Squat", "target": "4 × 8"}, {"nama": "Romanian Deadlift", "target": "4 × 8"}, {"nama": "Leg Press", "target": "3 × 12"}, {"nama": "Walking Lunges", "target": "3 × 12/kaki"}, {"nama": "Leg Extension", "target": "3 × 15"}, {"nama": "Hip Thrust", "target": "4 × 10"}]
     }
 
 if "jadwal_gym_member_umum" not in st.session_state:
