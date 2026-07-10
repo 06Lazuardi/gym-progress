@@ -399,7 +399,7 @@ else:
 
     # ------ ENGINE PROGRESSIVE OVERLOAD ------
         df_clean_logs = df_logs.dropna(subset=["Tanggal"])
-        user_logs = df_clean_logs[(df_clean_logs["Username"] == st.session_state.user_id) & (df_clean_logs["Gerakan"] == gerakan_pilihan)]
+        user_logs = df_clean_logs[(df_clean_logs["Username"] == st.session_state.user_id) & (df_clean_logs["Gerakan"] == locals().get("gerakan_pilihan", ""))]
         beban_dasar_minggu_ini = 0.0
         info_progres = "Sesi pertama untuk gerakan ini. Mulai dengan beban yang aman."
         
